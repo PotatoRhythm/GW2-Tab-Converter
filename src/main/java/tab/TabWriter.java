@@ -17,7 +17,8 @@ public class TabWriter {
     public void writeTitle(String title) {
         tab.append("<html>\n<body>\n<meta charset=\"utf-8\"><b style=\"font-weight:normal;\">");
         tab.append("<p dir=\"ltr\" style=\"line-height:1.38;margin-top:0pt;margin-bottom:0pt;\">");
-        tab.append("<span style=\"font-size:20pt;font-family:Arial,sans-serif;font-weight:700;font-style:normal;text-decoration:none;white-space:pre;\">");
+        tab.append("<span style=\"font-size:20pt;font-family:Arial,sans-serif;font-weight:700;font-style:normal;text-decoration:none;white-space:pre;")
+                .append(textColor(style.titleColor, style.titleColorEnabled)).append("\">");
         tab.append("\t").append(title).append("</span></p>");
     }
 
@@ -36,7 +37,8 @@ public class TabWriter {
             labelCounter.merge(instrument.getName(), 1, Integer::sum);
             tab.append("<td style=\"").append(cellStyler(style.borderTopColor, style.borderTopEnabled));
             tab.append("<p dir=\"ltr\" style=\"line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
-            tab.append("<span style=\"font-size:12pt;font-family:Arial,sans-serif;font-weight:700;font-style:normal;text-decoration:none;\">");
+            tab.append("<span style=\"font-size:12pt;font-family:Arial,sans-serif;font-weight:700;font-style:normal;text-decoration:none;")
+                    .append(textColor(style.instrumentColor, style.instrumentColorEnabled)).append("\">");
             if (instrumentCounter.get(instrument.getName()) > 1) {
                 tab.append(instrument.getName()).append(" ").append(labelCounter.get(instrument.getName()));
             } else {
@@ -54,7 +56,8 @@ public class TabWriter {
     public void writeRowLabel(int numBoxes, int row, char label) {
         tab.append("<td style=\"").append(cellStyler(style.borderSidesColor, style.borderSidesEnabled));
         tab.append("<p dir=\"ltr\" style=\"line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
-        tab.append("<span style=\"font-size:10pt;font-family:Georgia;font-weight:700;font-style:normal;text-decoration:none;\">");
+        tab.append("<span style=\"font-size:10pt;font-family:Georgia;font-weight:700;font-style:normal;text-decoration:none;")
+                .append(textColor(style.boxLetterColor, style.boxLetterColorEnabled)).append("\">");
         tab.append(label).append("</span></p></td>");
     }
 
@@ -178,5 +181,10 @@ public class TabWriter {
         styleString.append("padding:5pt 5pt 5pt 5pt;\">");
 
         return styleString.toString();
+    }
+
+    // Text colour for a span's style, or nothing so it keeps the normal colour
+    private String textColor(String color, boolean isColored) {
+        return isColored ? "color:" + color + ";" : "";
     }
 }

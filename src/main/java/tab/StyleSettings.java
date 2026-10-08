@@ -23,6 +23,13 @@ public class StyleSettings {
     public String highlightColor2 = "#b7b7b7";
     public boolean sharpColorEnabled = true;
     public String sharpColor = "#006400";
+    // Text colours, off by default so the text keeps Google Docs' normal colour
+    public boolean titleColorEnabled = false;
+    public String titleColor = "#000000";
+    public boolean instrumentColorEnabled = false;
+    public String instrumentColor = "#000000";
+    public boolean boxLetterColorEnabled = false;
+    public String boxLetterColor = "#000000";
     public boolean closingTextEnabled = false;
     public String closingText = "";
 
@@ -60,6 +67,12 @@ public class StyleSettings {
         map.put("highlightColor2", highlightColor2);
         map.put("sharpColorEnabled", Boolean.toString(sharpColorEnabled));
         map.put("sharpColor", sharpColor);
+        map.put("titleColorEnabled", Boolean.toString(titleColorEnabled));
+        map.put("titleColor", titleColor);
+        map.put("instrumentColorEnabled", Boolean.toString(instrumentColorEnabled));
+        map.put("instrumentColor", instrumentColor);
+        map.put("boxLetterColorEnabled", Boolean.toString(boxLetterColorEnabled));
+        map.put("boxLetterColor", boxLetterColor);
         map.put("closingTextEnabled", Boolean.toString(closingTextEnabled));
         map.put("closingText", closingText);
         return map;
@@ -81,11 +94,18 @@ public class StyleSettings {
         s.highlightColor2 = text(source, "highlightColor2", s.highlightColor2);
         s.sharpColorEnabled = flag(source, "sharpColorEnabled", s.sharpColorEnabled);
         s.sharpColor = text(source, "sharpColor", s.sharpColor);
+        s.titleColorEnabled = flag(source, "titleColorEnabled", s.titleColorEnabled);
+        s.titleColor = text(source, "titleColor", s.titleColor);
+        s.instrumentColorEnabled = flag(source, "instrumentColorEnabled", s.instrumentColorEnabled);
+        s.instrumentColor = text(source, "instrumentColor", s.instrumentColor);
+        s.boxLetterColorEnabled = flag(source, "boxLetterColorEnabled", s.boxLetterColorEnabled);
+        s.boxLetterColor = text(source, "boxLetterColor", s.boxLetterColor);
         s.closingTextEnabled = flag(source, "closingTextEnabled", s.closingTextEnabled);
         s.closingText = text(source, "closingText", s.closingText);
         return s;
     }
 
+    // Settings missing from older presets and preferences keep their defaults
     private static String text(Function<String, String> source, String key, String defaultValue) {
         String value = source.apply(key);
         return value != null ? value : defaultValue;

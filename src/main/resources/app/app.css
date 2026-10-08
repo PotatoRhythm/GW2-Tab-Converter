@@ -1,0 +1,403 @@
+/* Shared look for every window and dialog. Dark mode by default; light mode adds the "light" class to the root.
+   Bright green is kept for the main action, a calmer green for dropdowns and checkboxes, and a solid soft green
+   for secondary actions */
+
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+
+    /* Dark colours */
+    -fx-base: #2b2b2b;
+    -bg: #2b2b2b;
+    -text: #e3e8ec;
+    -text-muted: #98a39e;
+    -field: #343638;
+    -field-hover: #3d4042;
+    -field-border: #565b5e;
+    -green: #2fa572;
+    -green-hover: #36b47d;
+    -green-dark: #106a43;
+    -on-green: #f2f7f4;
+    -green-disabled: #34443c;
+    -on-green-disabled: #80948a;
+    -green-glow: rgba(47, 165, 114, 0.35);
+    -tonal: rgba(47, 165, 114, 0.13);
+    -tonal-hover: rgba(47, 165, 114, 0.23);
+    -tonal-border: rgba(47, 165, 114, 0.45);
+    -tonal-text: #7fdcb1;
+    /* Solid soft green for secondary buttons and the chosen score */
+    -secondary: #3b7d60;
+    -secondary-hover: #428a6b;
+    -secondary-pressed: #346f56;
+    -secondary-border: #4a8c70;
+    -on-secondary: #f0f7f3;
+    /* Chosen score box: solid but a step quieter than the buttons, since it's a large area */
+    -score-box: #314c40;
+    -score-box-hover: #37574a;
+    -score-box-border: #3f6653;
+    /* Calmer green for dropdowns and ticked checkboxes */
+    -input-green: #2a9768;
+    -input-green-hover: #30a572;
+    -input-green-dark: #0f5f3c;
+    -dialog-header: #242424;
+
+    -fx-background-color: -bg;
+    -fx-accent: -green;
+    -fx-text-background-color: -text;
+}
+
+.root.light {
+    -fx-base: #eef1ef;
+    -bg: #f4f6f5;
+    -text: #1c2620;
+    -text-muted: #5d6a63;
+    -field: #ffffff;
+    -field-hover: #eef3f0;
+    -field-border: #c9d3cd;
+    -green: #279a65;
+    -green-hover: #22875a;
+    -green-dark: #1a7049;
+    -on-green: #ffffff;
+    -green-disabled: #d3e5db;
+    -on-green-disabled: #86a596;
+    -green-glow: rgba(39, 154, 101, 0.30);
+    -tonal: rgba(39, 154, 101, 0.09);
+    -tonal-hover: rgba(39, 154, 101, 0.17);
+    -tonal-border: rgba(39, 154, 101, 0.45);
+    -tonal-text: #1d7a4f;
+    -secondary: #8ecaac;
+    -secondary-hover: #80c2a1;
+    -secondary-pressed: #72b996;
+    -secondary-border: #74ba98;
+    -on-secondary: #062b19;
+    -score-box: #dcede4;
+    -score-box-hover: #cfe6d9;
+    -score-box-border: #a8d0bb;
+    -input-green: #2a9768;
+    -input-green-hover: #30a572;
+    -input-green-dark: #0f5f3c;
+    -dialog-header: #e6ebe8;
+}
+
+/* ===== Text ===== */
+.label {
+    -fx-text-fill: -text;
+}
+.app-title {
+    -fx-font-size: 23px;
+    -fx-font-weight: bold;
+}
+.heading {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.field-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+/* ===== Buttons ===== */
+.button, .menu-button {
+    -fx-background-color: -green;
+    -fx-background-radius: 8;
+    -fx-background-insets: 0;
+    -fx-border-width: 0;
+    -fx-text-fill: -on-green;
+    -fx-padding: 7 16 7 16;
+    -fx-min-height: 36;
+    -fx-cursor: hand;
+}
+.menu-button {
+    -fx-padding: 1 6 1 6;
+}
+.menu-button > .label {
+    -fx-text-fill: -on-green;
+}
+.menu-button > .arrow-button > .arrow {
+    -fx-background-color: -on-green;
+}
+.button:hover, .menu-button:hover, .menu-button:showing {
+    -fx-background-color: -green-hover;
+}
+.button:pressed {
+    -fx-background-color: -green-dark;
+}
+.button:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: -green-disabled;
+    -fx-text-fill: -on-green-disabled;
+}
+
+/* Secondary actions: solid soft green so they don't compete with the main button */
+.button.secondary, .menu-button.secondary {
+    -fx-background-color: -secondary;
+    -fx-border-color: -secondary-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-text-fill: -on-secondary;
+}
+.menu-button.secondary > .label {
+    -fx-text-fill: -on-secondary;
+}
+.menu-button.secondary > .arrow-button > .arrow {
+    -fx-background-color: -on-secondary;
+}
+.button.secondary:hover, .menu-button.secondary:hover, .menu-button.secondary:showing {
+    -fx-background-color: -secondary-hover;
+}
+.button.secondary:pressed {
+    -fx-background-color: -secondary-pressed;
+}
+
+/* Same green as the dropdowns, for the Style window's Save button */
+.button.input-green {
+    -fx-background-color: -input-green;
+}
+.button.input-green:hover {
+    -fx-background-color: -input-green-hover;
+}
+.button.input-green:pressed {
+    -fx-background-color: -input-green-dark;
+}
+
+/* Score file area: looks like a place to drop a file */
+.button.file-button {
+    -fx-background-color: -tonal;
+    -fx-border-color: -tonal-border;
+    -fx-border-style: segments(7, 5);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 18 16 18 16;
+}
+.button.file-button:hover {
+    -fx-background-color: -tonal-hover;
+}
+.button.file-button.has-file {
+    -fx-background-color: -score-box;
+    -fx-border-color: -score-box-border;
+    -fx-border-style: solid;
+    -fx-border-width: 1;
+}
+.button.file-button.has-file:hover {
+    -fx-background-color: -score-box-hover;
+}
+.button.file-button.drag-over {
+    -fx-background-color: -tonal-hover;
+    -fx-border-color: -green;
+    -fx-border-style: solid;
+    -fx-border-width: 2;
+}
+.button.file-button:disabled {
+    -fx-background-color: -tonal;
+    -fx-opacity: 0.6;
+}
+.file-icon {
+    -fx-fill: -tonal-text;
+}
+.file-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+}
+.file-hint {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-muted;
+}
+
+/* Main action at the bottom */
+.button.convert {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-pref-height: 54;
+    -fx-effect: dropshadow(gaussian, -green-glow, 16, 0, 0, 3);
+}
+.button.convert:disabled {
+    -fx-effect: null;
+}
+
+/* Round light/dark mode switch */
+.button.theme-toggle {
+    -fx-background-color: -field-border, -field;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 17, 16;
+    -fx-padding: 0;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-pref-width: 34;
+    -fx-pref-height: 34;
+}
+.button.theme-toggle:hover {
+    -fx-background-color: -field-border, -field-hover;
+}
+.theme-icon {
+    -fx-fill: -text;
+    -fx-stroke: -text;
+}
+
+/* ===== Dropdowns ===== */
+/* Dark strip on the right behind the arrow */
+.choice-box {
+    -fx-background-color: -input-green-dark, -input-green;
+    -fx-background-radius: 8, 8 0 0 8;
+    -fx-background-insets: 0, 0 30 0 0;
+    -fx-padding: 0;
+    -fx-min-height: 36;
+    -fx-cursor: hand;
+}
+.choice-box > .label {
+    -fx-text-fill: -on-green;
+    -fx-padding: 6 12 6 12;
+}
+.choice-box > .open-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 11 0 11;
+}
+.choice-box > .open-button > .arrow {
+    -fx-background-color: -on-green;
+}
+.choice-box:hover {
+    -fx-background-color: -input-green-dark, -input-green-hover;
+}
+.context-menu {
+    -fx-background-color: -bg;
+    -fx-background-radius: 8;
+    -fx-border-color: -field-border;
+    -fx-border-radius: 8;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 12, 0, 0, 3);
+}
+.menu-item {
+    -fx-background-radius: 5;
+    -fx-padding: 6 12 6 12;
+}
+.menu-item > .label {
+    -fx-text-fill: -text;
+}
+.menu-item:focused {
+    -fx-background-color: -green;
+}
+.menu-item:focused > .label {
+    -fx-text-fill: -on-green;
+}
+
+/* ===== Colour pickers ===== */
+.color-picker {
+    -fx-background-color: -field-border, -field;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 8, 7;
+    -fx-min-height: 34;
+    -fx-cursor: hand;
+}
+.color-picker:hover {
+    -fx-background-color: -field-border, -field-hover;
+}
+.color-picker > .color-picker-label {
+    -fx-text-fill: -text;
+}
+.color-picker > .arrow-button > .arrow {
+    -fx-background-color: -text;
+}
+.color-picker:disabled, .choice-box:disabled, .text-area:disabled {
+    -fx-opacity: 0.35;
+}
+.color-palette {
+    -fx-background-color: -bg;
+}
+
+/* ===== Checkboxes ===== */
+.check-box {
+    -fx-text-fill: -text;
+    -fx-label-padding: 0 0 0 9;
+    -fx-cursor: hand;
+}
+.check-box > .box {
+    -fx-background-color: -field;
+    -fx-border-color: -field-border;
+    -fx-border-width: 2;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 3;
+}
+.check-box:hover > .box {
+    -fx-border-color: -input-green;
+}
+.check-box:selected > .box {
+    -fx-background-color: -input-green;
+    -fx-border-color: -input-green;
+}
+.check-box > .box > .mark {
+    -fx-background-color: transparent;
+}
+.check-box:selected > .box > .mark {
+    -fx-background-color: white;
+}
+
+/* ===== Text box ===== */
+.text-area {
+    -fx-background-color: -field-border, -field;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 8, 7;
+    -fx-text-fill: -text;
+    -fx-prompt-text-fill: -text-muted;
+    -fx-highlight-fill: -green-dark;
+}
+.text-area:focused {
+    -fx-background-color: -green, -field;
+}
+.text-area .content {
+    -fx-background-color: -field;
+    -fx-background-radius: 7;
+}
+.text-area .scroll-pane, .text-area .viewport {
+    -fx-background-color: transparent;
+}
+
+/* ===== Style window: slightly smaller controls so it isn't bulky ===== */
+.compact .button, .compact .choice-box {
+    -fx-min-height: 32;
+}
+.compact .color-picker {
+    -fx-min-height: 30;
+}
+.compact .heading {
+    -fx-font-size: 14px;
+}
+/* Thin line between the two halves */
+.column-divider {
+    -fx-padding: 0;
+}
+.column-divider > .line {
+    -fx-border-color: transparent transparent transparent -field-border;
+    -fx-border-width: 0 0 0 1;
+    -fx-border-insets: 0;
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* ===== Tooltips ===== */
+.tooltip {
+    -fx-background-color: -field;
+    -fx-background-radius: 6;
+    -fx-text-fill: -text;
+    -fx-font-size: 12px;
+    -fx-padding: 5 9 5 9;
+}
+
+/* ===== Dialogs ===== */
+.dialog-pane {
+    -fx-background-color: -bg;
+}
+.dialog-pane > .header-panel {
+    -fx-background-color: -dialog-header;
+}
+.dialog-pane > .content.label {
+    -fx-text-fill: -text;
+}
+.popup-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}

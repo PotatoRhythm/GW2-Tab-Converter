@@ -6,6 +6,7 @@ import tab.StyleSettings;
 
 import javafx.concurrent.Task;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -65,11 +66,14 @@ class Conversion {
             warnings.addAll(parser.getWarnings());
             Alert alert;
             if (warnings.isEmpty()) {
-                alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Information");
-                alert.setContentText("Table copied to clipboard.");
+                alert = Theme.apply(new Alert(Alert.AlertType.INFORMATION));
+                alert.setTitle("Copied to Clipboard");
+                Label copied = new Label("The tab has been copied to your clipboard.");
+                copied.getStyleClass().add("popup-title");
+                alert.getDialogPane().setContent(new VBox(4, copied, new Label("Paste it into Google Docs.")));
+                alert.getDialogPane().setPrefWidth(415);
             } else {
-                alert = new Alert(Alert.AlertType.WARNING);
+                alert = Theme.apply(new Alert(Alert.AlertType.WARNING));
                 alert.setTitle("Converted With Warnings");
                 alert.setContentText("Table copied to clipboard, but:\n\n" + Dialogs.formatList(warnings));
             }
@@ -101,7 +105,7 @@ class Conversion {
     private Optional<Boolean> askToApproximate(Preprocessor preprocessor) {
         ButtonType addButton = new ButtonType("Add Them", ButtonBar.ButtonData.YES);
         ButtonType dropButton = new ButtonType("Leave Them Out", ButtonBar.ButtonData.NO);
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "", addButton, dropButton, ButtonType.CANCEL);
+        Alert alert = Theme.apply(new Alert(Alert.AlertType.CONFIRMATION, "", addButton, dropButton, ButtonType.CANCEL));
         alert.setTitle("Notes Don't Fit Exactly");
         alert.setHeaderText("Some notes can't be merged exactly.");
         String explanation = "Add them anyway?";

@@ -10,6 +10,11 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    // Calls Windows to colour the title bar and window border to match the theme
+    implementation 'net.java.dev.jna:jna:5.17.0'
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     // Builds with any JDK from 17 up

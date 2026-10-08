@@ -10,7 +10,7 @@ final class Dialogs {
     }
 
     static void showInfo(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        Alert alert = Theme.apply(new Alert(Alert.AlertType.INFORMATION));
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
@@ -19,7 +19,7 @@ final class Dialogs {
 
     static void showError(String header, Throwable error) {
         error.printStackTrace();
-        Alert alert = new Alert(Alert.AlertType.ERROR);
+        Alert alert = Theme.apply(new Alert(Alert.AlertType.ERROR));
         alert.setTitle("Error");
         alert.setHeaderText(header);
         alert.setContentText(error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName());
