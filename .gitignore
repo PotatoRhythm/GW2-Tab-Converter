@@ -1,0 +1,29 @@
+# Gradle build output and cache (the .exe can be uploaded as a GitHub Release download instead)
+.gradle/
+build/
+*.class
+
+# IDE files: IntelliJ and VS Code both set themselves up from build.gradle
+.idea/
+*.iml
+.vscode/
+# Files VS Code's Java extension can create for Gradle projects
+.project
+.classpath
+.settings/
+bin/
+
+# Left over from before Gradle (safe to delete)
+out/
+javafx-sdk-*/
+
+# Style presets saved while testing (Save Preset opens in the project folder)
+/*.properties
+
+# Java crash logs
+hs_err_pid*.log
+replay_pid*.log
+
+# OS files
+Thumbs.db
+.DS_Store

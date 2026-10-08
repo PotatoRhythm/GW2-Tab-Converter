@@ -1,0 +1,65 @@
+plugins {
+    id 'application'
+    // Downloads JavaFX and sets it up for compiling and running
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+version = '0.93'
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // Builds with any JDK from 17 up
+    options.release = 17
+}
+
+javafx {
+    version = '17.0.10'
+    modules = ['javafx.controls']
+}
+
+application {
+    // Launcher starts the app in a way that also works when JavaFX is on the classpath, like in the installed .exe
+    mainClass = 'app.Launcher'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'app.Launcher'
+    }
+}
+
+// Builds the Windows installer in build/jpackage, with its own Java runtime so users don't need Java installed.
+// Needs the WiX Toolset v3 (https://wixtoolset.org)
+tasks.register('packageExe', Exec) {
+    group = 'distribution'
+    description = 'Builds the Windows installer (.exe).'
+    dependsOn 'installDist'
+
+    def appName = 'GW2TabConverter'
+    def libDir = layout.buildDirectory.dir("install/${project.name}/lib")
+    def outputDir = layout.buildDirectory.dir('jpackage')
+    def mainJar = jar.archiveFileName
+    def appVersion = project.version.toString()
+    def icon = file('Converter_icon.ico')
+    def jpackage = "${System.getProperty('java.home')}/bin/jpackage"
+
+    doFirst {
+        outputDir.get().asFile.deleteDir()
+    }
+    commandLine jpackage,
+            '--type', 'exe',
+            '--name', appName,
+            '--description', appName,
+            '--app-version', appVersion,
+            '--input', libDir.get().asFile,
+            '--main-jar', mainJar.get(),
+            '--main-class', 'app.Launcher',
+            '--icon', icon,
+            '--dest', outputDir.get().asFile,
+            '--win-shortcut',
+            '--win-menu'
+}
