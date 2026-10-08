@@ -1,6 +1,6 @@
 # GW2 Tab Converter
 
-Converts MuseScore scores (`.mscz` or `.mscx`) into Guild Wars 2 instrument tabs, ready to paste into Google Docs.
+Converts MuseScore scores (`.mscz` or `.mscx`) into Guild Wars 2 instrument tabs
 
 ## Download
 
