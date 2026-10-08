@@ -51,6 +51,9 @@ tasks.register('packageExe', Exec) {
     def appVersion = project.version.toString()
     def icon = file('Converter_icon.ico')
     def jpackage = "${System.getProperty('java.home')}/bin/jpackage"
+    // Lets Windows recognise a newer installer as an upgrade of the same app, so it replaces the old version.
+    // Never change this, or new versions will install alongside old ones instead of upgrading them
+    def upgradeId = '2f87db6f-144f-4c76-b9dd-87b725d3d496'
 
     doFirst {
         outputDir.get().asFile.deleteDir()
@@ -59,6 +62,8 @@ tasks.register('packageExe', Exec) {
             '--type', 'exe',
             '--name', appName,
             '--description', appName,
+            // Shown as the publisher in Windows Settings -> Apps
+            '--vendor', 'PotatoRhythm',
             '--app-version', appVersion,
             '--input', libDir.get().asFile,
             '--main-jar', mainJar.get(),
@@ -66,5 +71,8 @@ tasks.register('packageExe', Exec) {
             '--icon', icon,
             '--dest', outputDir.get().asFile,
             '--win-shortcut',
-            '--win-menu'
+            '--win-menu',
+            '--win-upgrade-uuid', upgradeId,
+            // Installs for the current user, so no administrator prompt is needed
+            '--win-per-user-install'
 }
