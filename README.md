@@ -45,8 +45,8 @@ Based on notation by [Merrow](https://docs.google.com/document/d/1Bgoqi7LWJiqkF4
 | **Bold** | The start of a measure (bar) |
 | `( )` | Notes one octave higher, e.g. `(123)` |
 | `[ ]` | Notes one octave lower, e.g. `[567]` |
-| `⸨ ⸩` `⸨( )⸩` `⸨⸨ ⸩⸩` | Notes 2, 3 or 4 octaves higher, outside what GW2 instruments can reach |
-| `⟦ ⟧` `⟦[ ]⟧` `⟦⟦ ⟧⟧` | Notes 2, 3 or 4 octaves lower, outside what GW2 instruments can reach |
+| <code>⸨&nbsp;⸩</code>&nbsp;<code>⸨(&nbsp;)⸩</code>&nbsp;<code>⸨⸨&nbsp;⸩⸩</code> | Notes 2, 3 or 4 octaves higher, outside what GW2 instruments can reach |
+| <code>⟦&nbsp;⟧</code>&nbsp;<code>⟦[&nbsp;]⟧</code>&nbsp;<code>⟦⟦&nbsp;⟧⟧</code> | Notes 2, 3 or 4 octaves lower, outside what GW2 instruments can reach |
 | `/` | Notes played together as a chord, e.g. `1/3/5` |
 | `{ }` | Grace notes, played very fast |
 | `` ` `` | Between numbers, just a visual spacer for readability, not a rest. `` 11`1111`11 `` is played the same as `11111111` |
