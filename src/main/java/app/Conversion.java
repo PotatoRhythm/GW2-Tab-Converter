@@ -5,8 +5,15 @@ import tab.Parser;
 import tab.StyleSettings;
 
 import javafx.concurrent.Task;
+import javafx.geometry.Insets;
+import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -66,12 +73,7 @@ class Conversion {
             warnings.addAll(parser.getWarnings());
             Alert alert;
             if (warnings.isEmpty()) {
-                alert = Theme.apply(new Alert(Alert.AlertType.INFORMATION));
-                alert.setTitle("Copied to Clipboard");
-                Label copied = new Label("The tab has been copied to your clipboard.");
-                copied.getStyleClass().add("popup-title");
-                alert.getDialogPane().setContent(new VBox(4, copied, new Label("Paste it into Google Docs.")));
-                alert.getDialogPane().setPrefWidth(415);
+                alert = copiedPopup();
             } else {
                 alert = Theme.apply(new Alert(Alert.AlertType.WARNING));
                 alert.setTitle("Converted With Warnings");
@@ -80,6 +82,34 @@ class Conversion {
             alert.setHeaderText(null);
             alert.showAndWait();
         });
+    }
+
+    static Alert copiedPopup() {
+        Alert alert = Theme.apply(new Alert(Alert.AlertType.INFORMATION));
+        alert.setTitle("Copied to Clipboard");
+        Label copied = new Label("The tab has been copied to your clipboard.");
+        copied.getStyleClass().add("popup-title");
+        alert.getDialogPane().setContent(new VBox(4, copied, new Label("Paste it into Google Docs.")));
+        alert.getDialogPane().setGraphic(clipboardIcon());
+        alert.getDialogPane().setPrefWidth(388);
+        alert.getDialogPane().getStyleClass().add("copied-popup");
+        return alert;
+    }
+
+    // Lucide "clipboard-check" (ISC licence) in place of the blue information icon,
+    // nudged right and down so it has a margin and sits level with the two lines of text
+    private static Node clipboardIcon() {
+        SVGPath clipboard = new SVGPath();
+        clipboard.setContent("M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z "
+                + "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M9 14l2 2 4-4");
+        clipboard.setStrokeLineCap(StrokeLineCap.ROUND);
+        clipboard.setStrokeLineJoin(StrokeLineJoin.ROUND);
+        clipboard.setScaleX(1.5);
+        clipboard.setScaleY(1.5);
+        clipboard.getStyleClass().add("clipboard-icon");
+        StackPane holder = new StackPane(new Group(clipboard));
+        holder.setPadding(new Insets(4, 2, 0, 6));
+        return holder;
     }
 
     // Keep windows responsive during conversion

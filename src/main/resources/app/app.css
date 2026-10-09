@@ -13,6 +13,8 @@
     -bg: #2b2b2b;
     -text: #e3e8ec;
     -text-muted: #98a39e;
+    /* Small labels above controls: between -text-muted and -text */
+    -field-label: #b6bfba;
     -field: #343638;
     -field-hover: #3d4042;
     -field-border: #565b5e;
@@ -41,6 +43,9 @@
     -input-green: #2a9768;
     -input-green-hover: #30a572;
     -input-green-dark: #0f5f3c;
+    /* Paintbrush button: a touch darker than the dropdowns */
+    -style-button: #279062;
+    -style-button-hover: #2d9d6b;
     -dialog-header: #242424;
 
     -fx-background-color: -bg;
@@ -53,6 +58,7 @@
     -bg: #f4f6f5;
     -text: #1c2620;
     -text-muted: #5d6a63;
+    -field-label: #434f48;
     -field: #ffffff;
     -field-hover: #eef3f0;
     -field-border: #c9d3cd;
@@ -78,6 +84,9 @@
     -input-green: #2a9768;
     -input-green-hover: #30a572;
     -input-green-dark: #0f5f3c;
+    /* Paintbrush button: a touch darker than the dropdowns */
+    -style-button: #279062;
+    -style-button-hover: #2d9d6b;
     -dialog-header: #e6ebe8;
 }
 
@@ -95,7 +104,7 @@
 }
 .field-label {
     -fx-font-size: 12px;
-    -fx-text-fill: -text-muted;
+    -fx-text-fill: -field-label;
 }
 
 /* ===== Buttons ===== */
@@ -220,7 +229,7 @@
 }
 
 /* Round light/dark mode switch */
-.button.theme-toggle {
+.button.icon-button {
     -fx-background-color: -field-border, -field;
     -fx-background-insets: 0, 1;
     -fx-background-radius: 17, 16;
@@ -230,10 +239,31 @@
     -fx-pref-width: 34;
     -fx-pref-height: 34;
 }
-.button.theme-toggle:hover {
+/* Paintbrush beside the Options dropdowns, as tall as them and a touch darker */
+.button.style-button {
+    -fx-background-color: -style-button;
+    -fx-background-radius: 8;
+    -fx-padding: 0;
+    -fx-min-width: 36;
+    -fx-min-height: 36;
+    -fx-pref-width: 36;
+    -fx-pref-height: 36;
+}
+.button.style-button:hover {
+    -fx-background-color: -style-button-hover;
+}
+.button.style-button:pressed {
+    -fx-background-color: -input-green-dark;
+}
+.brush-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -on-green;
+    -fx-stroke-width: 2;
+}
+.button.icon-button:hover {
     -fx-background-color: -field-border, -field-hover;
 }
-.theme-icon {
+.icon-graphic {
     -fx-fill: -text;
     -fx-stroke: -text;
 }
@@ -357,8 +387,11 @@
 }
 
 /* ===== Style window: slightly smaller controls so it isn't bulky ===== */
-.compact .button, .compact .choice-box {
+/* One fixed height, so bordered and borderless buttons line up */
+.compact .button, .compact .menu-button, .compact .choice-box {
     -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-max-height: 32;
 }
 .compact .color-picker {
     -fx-min-height: 30;
@@ -400,4 +433,13 @@
 .popup-title {
     -fx-font-size: 15px;
     -fx-font-weight: bold;
+}
+/* Less space between the Copied popup's text and its OK button */
+.copied-popup > .button-bar > .container {
+    -fx-padding: 0.25em 0.833em 0.833em 0.833em;
+}
+.clipboard-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -green;
+    -fx-stroke-width: 2;
 }

@@ -13,10 +13,16 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.prefs.Preferences;
 
 // Style Settings window
@@ -147,18 +153,8 @@ final class StyleSettingsWindow {
                 highlightColor1, highlightColor2, titleColorPicker, instrumentColorPicker, boxLetterColorPicker,
                 sharpColorPicker));
 
-        // ===== Buttons =====
-        Button resetButton = new Button("Reset to Defaults");
-        resetButton.getStyleClass().add("secondary");
-        resetButton.setOnAction(e -> showStyle.accept(new StyleSettings()));
-        Button cancelButton = new Button("Cancel");
-        cancelButton.getStyleClass().add("secondary");
-        cancelButton.setCancelButton(true);
-        cancelButton.setOnAction(e -> settingsStage.close());
-        Button saveButton = new Button("Save");
-        saveButton.setDefaultButton(true);
-        saveButton.getStyleClass().add("input-green");
-        saveButton.setOnAction(e -> {
+        // Reads the style shown in the controls
+        Supplier<StyleSettings> readStyle = () -> {
             StyleSettings style = new StyleSettings();
             style.borderStyle = borderStyleChoice.getValue();
             style.borderTopEnabled = borderTopToggle.isSelected();
@@ -182,13 +178,38 @@ final class StyleSettingsWindow {
             style.sharpColor = toHex(sharpColorPicker.getValue());
             style.closingTextEnabled = closingTextToggle.isSelected();
             style.closingText = closingTextField.getText();
-            style.save(preferences);
+            return style;
+        };
+
+        // ===== Buttons =====
+        // A loaded preset only fills the controls, like Reset, so it can still be cancelled
+        MenuItem loadPreset = new MenuItem("Load Preset…");
+        loadPreset.setOnAction(e -> {
+            StyleSettings style = loadPreset(settingsStage, preferences);
+            if (style != null) showStyle.accept(style);
+        });
+        MenuItem savePreset = new MenuItem("Save Preset…");
+        savePreset.setOnAction(e -> savePreset(settingsStage, preferences, readStyle.get()));
+        MenuButton presetsButton = new MenuButton("Presets", null, loadPreset, savePreset);
+        presetsButton.getStyleClass().add("secondary");
+        Button resetButton = new Button("Reset to Defaults");
+        resetButton.getStyleClass().add("secondary");
+        resetButton.setOnAction(e -> showStyle.accept(new StyleSettings()));
+        Button cancelButton = new Button("Cancel");
+        cancelButton.getStyleClass().add("secondary");
+        cancelButton.setCancelButton(true);
+        cancelButton.setOnAction(e -> settingsStage.close());
+        Button saveButton = new Button("Save");
+        saveButton.setDefaultButton(true);
+        saveButton.getStyleClass().add("input-green");
+        saveButton.setOnAction(e -> {
+            readStyle.get().save(preferences);
             settingsStage.close();
         });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox buttonRow = new HBox(10, resetButton, spacer, cancelButton, saveButton);
+        HBox buttonRow = new HBox(10, presetsButton, resetButton, spacer, cancelButton, saveButton);
         buttonRow.setPadding(new Insets(4, 0, 0, 0));
 
         // Two halves so the window stays short enough for the screen
@@ -200,6 +221,44 @@ final class StyleSettingsWindow {
         settingsStage.setResizable(false);
         Theme.placeOverOwner(settingsStage);
         settingsStage.showAndWait();
+    }
+
+    // The style in a preset file, or null if none was chosen or it couldn't be read
+    private static StyleSettings loadPreset(Stage owner, Preferences preferences) {
+        File file = presetChooser("Load Preset", preferences).showOpenDialog(owner);
+        if (file == null) return null;
+        preferences.put("lastPresetDirectory", file.getParent());
+        Properties props = new Properties();
+        try (FileInputStream fis = new FileInputStream(file)) {
+            props.load(fis);
+            return StyleSettings.fromProperties(props);
+        } catch (IOException ex) {
+            Dialogs.showError("Could Not Load Preset", ex);
+            return null;
+        }
+    }
+
+    private static void savePreset(Stage owner, Preferences preferences, StyleSettings style) {
+        File file = presetChooser("Save Preset", preferences).showSaveDialog(owner);
+        if (file == null) return;
+        preferences.put("lastPresetDirectory", file.getParent());
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            style.toProperties().store(fos, "GW2 Tab Converter Style Preset");
+            Dialogs.showInfo("Preset Saved", "Saved the style to " + file.getName() + ".");
+        } catch (IOException ex) {
+            Dialogs.showError("Could Not Save Preset", ex);
+        }
+    }
+
+    // Opens where the last preset was, or Documents the first time
+    private static FileChooser presetChooser(String title, Preferences preferences) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        File directory = new File(preferences.get("lastPresetDirectory",
+                System.getProperty("user.home") + File.separator + "Documents"));
+        if (directory.isDirectory()) fileChooser.setInitialDirectory(directory);
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Style presets", "*.properties"));
+        return fileChooser;
     }
 
     // Colours saved with Custom Colour show up in every picker and are remembered for next time

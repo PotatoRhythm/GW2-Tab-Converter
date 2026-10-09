@@ -20,7 +20,7 @@ Windows may show "Windows protected your PC" the first time, because the install
 
 1. Choose a MuseScore file, or drag one onto the window.
 2. Pick the sharp key style and how many measures go on each row.
-3. Optionally change the look under **Edit Style**, or load a saved style from **Presets**.
+3. Optionally change the look with the paintbrush button beside the **Options** dropdowns.
 4. Click **Convert & Copy**, then paste into a Google Doc.
 
 ## Building from source

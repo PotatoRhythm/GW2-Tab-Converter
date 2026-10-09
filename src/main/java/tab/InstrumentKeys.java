@@ -9,7 +9,9 @@ class InstrumentKeys {
     // Which black key (0-4) each sharp is, by pitch class
     private static final int[] BLACK_KEYS = {-1, 0, -1, 1, -1, -1, 2, -1, 3, -1, 4, -1};
     private static final String[] SHARP_NAMES = {"#1", "#2", "#4", "#5", "#6"};
+    // The F keys numbered 1-5, or numbered after the sharps they play
     private static final String[] F_KEY_NAMES = {"F1", "F2", "F3", "F4", "F5"};
+    private static final String[] F_SHARP_NAMES = {"F1", "F2", "F4", "F5", "F6"};
     // Keys of the instruments that only play one scale, by pitch class; null where there is no key
     private static final String[] CHOIR_BELL_KEYS = {"7", null, "1", null, "2", "3", null, "4", null, "5", null, "6"};
     private static final String[] HORN_FLUTE_KEYS = {null, "6", null, "7", "1", null, "2", "3", null, "4", null, "5"};
@@ -22,7 +24,7 @@ class InstrumentKeys {
     private final String sharpStyle;
     private final StyleSettings style;
 
-    // sharpStyle is "#" or "F"
+    // sharpStyle is "#" (#1, #2, #4...), "F#" (F1, F2, F4...) or "F" (F1, F2, F3...)
     InstrumentKeys(String sharpStyle, StyleSettings style) {
         this.sharpStyle = sharpStyle;
         this.style = style;
@@ -59,7 +61,18 @@ class InstrumentKeys {
         if (blackKey == -1) {
             return CHROMATIC_KEYS[pitchClass];
         }
-        String sharp = sharpStyle.equals("F") ? F_KEY_NAMES[blackKey] : SHARP_NAMES[blackKey];
+        String sharp;
+        switch (sharpStyle) {
+            case "F":
+                sharp = F_KEY_NAMES[blackKey];
+                break;
+            case "F#":
+                sharp = F_SHARP_NAMES[blackKey];
+                break;
+            default:
+                sharp = SHARP_NAMES[blackKey];
+                break;
+        }
         if (style.sharpColorEnabled) {
             return "<span style=\"color: " + style.sharpColor + ";\">" + sharp + "</span>";
         }

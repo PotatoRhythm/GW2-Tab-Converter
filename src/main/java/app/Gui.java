@@ -16,10 +16,7 @@ import javafx.stage.*;
 import javafx.util.StringConverter;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Properties;
+import java.util.Map;
 import java.util.prefs.Preferences;
 
 public class Gui {
@@ -72,11 +69,12 @@ public class Gui {
 
         // ===== Options =====
         ChoiceBox<String> sharpChoiceBox = new ChoiceBox<>();
-        sharpChoiceBox.getItems().addAll("#", "F");
+        sharpChoiceBox.getItems().addAll("#", "F#", "F");
+        // The list shows the start of each style, and the chosen one is shown in full
         sharpChoiceBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(String style) {
-                return style == null ? "" : style.equals("F") ? "F1, F2, F3…" : "#1, #2, #4…";
+                return style == null ? "" : SHORT_SHARP_NAMES.getOrDefault(style, style);
             }
 
             @Override
@@ -84,6 +82,7 @@ public class Gui {
                 return text;
             }
         });
+        showFullSharpNames(sharpChoiceBox);
         sharpStyle = preferences.get("lastSharpStyle", "#");
         sharpChoiceBox.setValue(sharpStyle);
         sharpChoiceBox.setOnAction(event -> {
@@ -100,28 +99,21 @@ public class Gui {
             preferences.putInt("measuresPerRow", measuresPerRow);
         });
 
-        HBox optionsRow = twoColumns(14,
-                labeled("Sharp Keys", sharpChoiceBox),
-                labeled("Measures per Row", measuresChoiceBox));
+        // Sharp Keys is just wide enough for its longest name, and Measures per Row gets the rest
+        VBox sharpColumn = labeled("Sharp Keys", sharpChoiceBox);
+        sharpColumn.setPrefWidth(160);
+        sharpColumn.setMinWidth(Region.USE_PREF_SIZE);
+        VBox measuresColumn = labeled("Measures per Row", measuresChoiceBox);
+        HBox.setHgrow(measuresColumn, Priority.ALWAYS);
+        HBox optionsRow = new HBox(14, sharpColumn, measuresColumn);
 
         CheckBox mergeStavesToggle = new CheckBox("Merge multi-staff instruments (e.g. grand staff)");
         mergeStavesToggle.setSelected(preferences.getBoolean("mergeStaves", true));
         mergeStavesToggle.setOnAction(event -> preferences.putBoolean("mergeStaves", mergeStavesToggle.isSelected()));
 
-        // ===== Style =====
-        Button styleSettingsButton = new Button("Edit Style");
-        styleSettingsButton.getStyleClass().add("secondary");
-        styleSettingsButton.setOnAction(e -> StyleSettingsWindow.show(primaryStage, preferences));
-
-        MenuItem loadPreset = new MenuItem("Load Preset…");
-        loadPreset.setOnAction(e -> loadPreset());
-        MenuItem savePreset = new MenuItem("Save Preset…");
-        savePreset.setOnAction(e -> savePreset());
-        MenuButton presetsButton = new MenuButton("Presets", null, loadPreset, savePreset);
-        presetsButton.setAlignment(Pos.CENTER);
-        presetsButton.getStyleClass().add("secondary");
-
-        HBox styleRow = twoColumns(14, styleSettingsButton, presetsButton);
+        // The paintbrush that opens the Tab Style window, level with the dropdowns
+        optionsRow.getChildren().add(makeStyleButton());
+        optionsRow.setAlignment(Pos.BOTTOM_LEFT);
 
         // ===== Convert =====
         convertButton.getStyleClass().add("convert");
@@ -133,7 +125,6 @@ public class Gui {
                 titleRow,
                 section("Score", fileButton),
                 section("Options", optionsRow, mergeStavesToggle),
-                section("Style", styleRow),
                 convertButton);
         VBox.setMargin(convertButton, new Insets(6, 0, 0, 0));
         root.setPadding(new Insets(18, 22, 22, 22));
@@ -162,10 +153,47 @@ public class Gui {
         primaryStage.show();
     }
 
+    private static final Map<String, String> SHORT_SHARP_NAMES = Map.of(
+            "#", "#1, #2, #4…", "F#", "F1, F2, F4…", "F", "F1, F2, F3…");
+    private static final Map<String, String> FULL_SHARP_NAMES = Map.of(
+            "#1, #2, #4…", "#1, #2, #4, #5, #6", "F1, F2, F4…", "F1, F2, F4, F5, F6", "F1, F2, F3…", "F1, F2, F3, F4, F5");
+
+    // Swaps the short name the dropdown shows for the chosen style for its full one
+    private static void showFullSharpNames(ChoiceBox<String> choiceBox) {
+        choiceBox.skinProperty().addListener((observable, oldSkin, skin) -> {
+            Node node = choiceBox.lookup(".label");
+            if (!(node instanceof Label)) return;
+            Label label = (Label) node;
+            Runnable lengthen = () -> label.setText(FULL_SHARP_NAMES.getOrDefault(label.getText(), label.getText()));
+            label.textProperty().addListener((textObservable, oldText, text) -> lengthen.run());
+            lengthen.run();
+        });
+    }
+
+    // Green paintbrush button, like the dropdowns beside it, that opens the Tab Style window
+    private Button makeStyleButton() {
+        // Lucide "paintbrush-vertical" (ISC licence), drawn as a line rather than filled
+        SVGPath brush = new SVGPath();
+        brush.setContent("M10 2v2 M14 2v4 M17 2a1 1 0 0 1 1 1v9H6V3a1 1 0 0 1 1-1z "
+                + "M6 12a1 1 0 0 0-1 1v1a2 2 0 0 0 2 2h2a1 1 0 0 1 1 1v2.9a2 2 0 1 0 4 0V17a1 1 0 0 1 1-1h2"
+                + "a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1");
+        brush.setStrokeLineCap(StrokeLineCap.ROUND);
+        brush.setStrokeLineJoin(StrokeLineJoin.ROUND);
+        brush.setScaleX(0.88);
+        brush.setScaleY(0.88);
+        brush.getStyleClass().add("brush-icon");
+        Button button = new Button();
+        button.setGraphic(new Group(brush));
+        button.getStyleClass().add("style-button");
+        button.setTooltip(new Tooltip("Edit tab style and presets"));
+        button.setOnAction(e -> StyleSettingsWindow.show(primaryStage, preferences));
+        return button;
+    }
+
     // Round button that switches between dark and light mode, showing a sun in dark mode and a moon in light mode
     private static Button makeThemeToggle() {
         Button toggle = new Button();
-        toggle.getStyleClass().add("theme-toggle");
+        toggle.getStyleClass().add("icon-button");
         Tooltip tooltip = new Tooltip();
         toggle.setTooltip(tooltip);
         Runnable showIcon = () -> {
@@ -189,7 +217,7 @@ public class Gui {
             ray.setStrokeLineCap(StrokeLineCap.ROUND);
             sun.getChildren().add(ray);
         }
-        sun.getChildren().forEach(shape -> shape.getStyleClass().add("theme-icon"));
+        sun.getChildren().forEach(shape -> shape.getStyleClass().add("icon-graphic"));
         return sun;
     }
 
@@ -199,7 +227,7 @@ public class Gui {
         moon.setScaleX(0.72);
         moon.setScaleY(0.72);
         moon.setStrokeWidth(0);
-        moon.getStyleClass().add("theme-icon");
+        moon.getStyleClass().add("icon-graphic");
         return new Group(moon);
     }
 
@@ -257,38 +285,6 @@ public class Gui {
         convertButton.setDisable(uploadedFile == null || converting);
     }
 
-    private void loadPreset() {
-        File file = presetChooser("Load Preset").showOpenDialog(primaryStage);
-        if (file == null) return;
-        Properties props = new Properties();
-        try (FileInputStream fis = new FileInputStream(file)) {
-            props.load(fis);
-            StyleSettings.fromProperties(props).save(preferences);
-            Dialogs.showInfo("Preset Loaded", "Loaded the style from " + file.getName() + ".");
-        } catch (IOException ex) {
-            Dialogs.showError("Could Not Load Preset", ex);
-        }
-    }
-
-    private void savePreset() {
-        File file = presetChooser("Save Preset").showSaveDialog(primaryStage);
-        if (file == null) return;
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            StyleSettings.load(preferences).toProperties().store(fos, "GW2 Tab Converter Style Preset");
-            Dialogs.showInfo("Preset Saved", "Saved the current style to " + file.getName() + ".");
-        } catch (IOException ex) {
-            Dialogs.showError("Could Not Save Preset", ex);
-        }
-    }
-
-    private static FileChooser presetChooser(String title) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle(title);
-        fileChooser.setInitialDirectory(new File("."));
-        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Properties files", "*.properties"));
-        return fileChooser;
-    }
-
     // ===== Layout helpers =====
     static Label heading(String text) {
         Label label = new Label(text);
@@ -309,17 +305,5 @@ public class Gui {
         Label label = new Label(text);
         label.getStyleClass().add("field-label");
         return new VBox(6, label, control);
-    }
-
-    // Two nodes side by side, each half the width
-    static HBox twoColumns(double gap, Region left, Region right) {
-        for (Region region : new Region[] {left, right}) {
-            HBox.setHgrow(region, Priority.ALWAYS);
-            region.setMaxWidth(Double.MAX_VALUE);
-            region.setPrefWidth(0);
-            // Without this, a wider minimum (like the Presets arrow) makes one side bigger
-            region.setMinWidth(0);
-        }
-        return new HBox(gap, left, right);
     }
 }
