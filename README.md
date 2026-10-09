@@ -23,6 +23,35 @@ Windows may show "Windows protected your PC" the first time, because the install
 3. Optionally change the look with the paintbrush button beside the **Options** dropdowns.
 4. Click **Convert & Copy**, then paste into a Google Doc.
 
+## Notation key
+
+Based on notation by [Merrow](https://docs.google.com/document/d/1Bgoqi7LWJiqkF4ahNDNX4oVmHDqBJv6aaxr8mTcAya4/edit?usp=sharing).
+
+### Note lengths
+
+| Length | Notes | Rest |
+| --- | --- | --- |
+| Half note / minim | `1~ ~ 1~ ~` | `~ ~` |
+| Quarter note / crotchet | `1~ 1~ 1~ 1~` | `~` |
+| Eighth note / quaver | `1 1 1 1` | `- -` |
+| 16th note / semiquaver | `1111` | `-` |
+| Dotted Eighth note / quaver | `1.` | `-.` |
+| Dotted Quarter note / crotchet | `1~.` | `~.` |
+
+### Other symbols
+
+| Symbol | Meaning |
+| --- | --- |
+| **Bold** | The start of a measure (bar) |
+| `( )` | Notes one octave higher, e.g. `(123)` |
+| `[ ]` | Notes one octave lower, e.g. `[567]` |
+| `⸨ ⸩` `⸨( )⸩` `⸨⸨ ⸩⸩` | Notes 2, 3 or 4 octaves higher, outside what GW2 instruments can reach |
+| `⟦ ⟧` `⟦[ ]⟧` `⟦⟦ ⟧⟧` | Notes 2, 3 or 4 octaves lower, outside what GW2 instruments can reach |
+| `/` | Notes played together as a chord, e.g. `1/3/5` |
+| `{ }` | Grace notes, played very fast |
+| `` ` `` | Between numbers, just a visual spacer for readability, not a rest. `` 11`1111`11 `` is played the same as `11111111` |
+| <code>,<ins>136</ins>,</code> | A triplet: a group of three notes played in the time of two |
+
 ## Building from source
 
 Needs a JDK, version 17 or newer. Gradle downloads JavaFX and everything else it needs, so there's nothing else to install.
