@@ -34,3 +34,7 @@ Needs a JDK, version 17 or newer. Gradle downloads JavaFX and everything else it
 | `./gradlew packageExe` | Builds a Windows installer in `build/jpackage`, with its own Java runtime so users don't need Java installed. Needs the [WiX Toolset v3](https://wixtoolset.org) |
 
 On Windows, use `gradlew.bat` (or `.\gradlew` in PowerShell) in place of `./gradlew`.
+
+## Licence
+
+[GPL-3.0](LICENSE)
