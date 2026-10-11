@@ -45,7 +45,7 @@ class TonicChooser {
         ArrayList<Integer> noteList = currentElement.getNoteList();
         //  Get current note info
         int currentPitch = noteList.get(noteIndex);
-        int currentOctave = getOctave(currentPitch, instrument.getName());
+        int currentOctave = getOctave(currentPitch, instrument.getKeys());
         double currentDuration = getExtendedDuration(instrument, currentElement);
         boolean isFirst = false;
         MusicElement firstElement = null;
@@ -69,11 +69,11 @@ class TonicChooser {
         int nextOctave;
         if (noteList.size() > 1 && noteIndex != noteList.size() - 1) {
             nextPitch = noteList.get(noteIndex + 1);
-            nextOctave = getOctave(nextPitch, instrument.getName());
+            nextOctave = getOctave(nextPitch, instrument.getKeys());
         }
         else if (nextChord != null) {
             nextPitch = nextChord.getNoteList().get(0);
-            nextOctave = getOctave(nextPitch, instrument.getName());
+            nextOctave = getOctave(nextPitch, instrument.getKeys());
         } else {
             nextPitch = 0;
             nextOctave = 2;
@@ -122,8 +122,8 @@ class TonicChooser {
                     return "1";
                 }
             } else {
-                if (getOctave(nextPitch, instrument.getName()) < currentOctave) {
-                    octaveFixer(lineText, currentOctave, getOctave(nextPitch, instrument.getName()), isFirst);
+                if (getOctave(nextPitch, instrument.getKeys()) < currentOctave) {
+                    octaveFixer(lineText, currentOctave, getOctave(nextPitch, instrument.getKeys()), isFirst);
                     return "8";
                 } else {
                     return "1";

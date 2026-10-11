@@ -1,5 +1,6 @@
 package tab;
 
+import model.Box;
 import model.Instrument;
 
 import java.util.ArrayList;
@@ -53,17 +54,56 @@ public class TabWriter {
         tab.append("</tr>");
     }
 
-    public void writeRowLabel(int numBoxes, int row, char label) {
-        tab.append("<td style=\"").append(cellStyler(style.borderSidesColor, style.borderSidesEnabled));
-        tab.append("<p dir=\"ltr\" style=\"line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
+    public void writeRowLabel(int numBoxes, int row, char label, Box box) {
+        tab.append("<td style=\"vertical-align:top;").append(cellStyler(style.borderSidesColor, style.borderSidesEnabled));
+        tab.append("<p dir=\"ltr\" style=\"text-align:center;line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
         tab.append("<span style=\"font-size:10pt;font-family:Georgia;font-weight:700;font-style:normal;text-decoration:none;")
                 .append(textColor(style.boxLetterColor, style.boxLetterColorEnabled)).append("\">");
-        tab.append(label).append("</span></p></td>");
+        tab.append(label).append("</span></p>");
+        if (style.markingsEnabled) {
+            int slotsUsed = 1;
+            // A label like "Swing" pushes the box's lines down one
+            int firstLineSlot = box.getLabel() == null ? 0 : 1;
+            for (Box.Marking marking : box.getMarkings()) {
+                int slot = marking.getLine() == 0 ? slotsUsed : marking.getLine() + firstLineSlot;
+                for (; slotsUsed < slot; slotsUsed++) {
+                    tab.append("<p dir=\"ltr\" style=\"line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
+                    tab.append("<span style=\"font-size:10pt;font-family:Arial,sans-serif;\">&nbsp;</span></p>");
+                }
+                // The tempo is 7pt and the time signature 6pt. Two markings share the 12pt slot, one gets it to itself
+                boolean both = marking.getTempo() != null && marking.getTimeSignature() != null;
+                if (marking.getTempo() != null) {
+                    writeMarking(marking.getTempo(), 7, both ? "1.0" : "1.7");
+                }
+                if (marking.getTimeSignature() != null) {
+                    writeMarking(marking.getTimeSignature(), 6, both ? "0.85" : "2.0");
+                }
+                slotsUsed++;
+            }
+        }
+        tab.append("</td>");
+    }
+
+    // A tempo or time signature line in the label column, centred under the box letter
+    private void writeMarking(String text, int fontSize, String lineHeight) {
+        tab.append("<p dir=\"ltr\" style=\"text-align:center;line-height:").append(lineHeight)
+                .append(";margin-top:0pt;margin-bottom:0pt;\">");
+        tab.append("<span style=\"font-size:").append(fontSize)
+                .append("pt;font-family:Cambria;font-weight:700;font-style:normal;text-decoration:none;")
+                .append(textColor(style.boxLetterColor, style.boxLetterColorEnabled)).append("\">");
+        tab.append(text).append("</span></p>");
     }
 
     public void writeBoxOpener(int numBoxes, int row) {
         tab.append("<td style=\"");
         tab.append(cellStyler(style.boxColor, style.boxColorEnabled));
+    }
+
+    // A note at the top of a box, like "Swing". Null writes an empty line, so the other columns stay lined up
+    public void writeBoxLabel(String text) {
+        tab.append("<p dir=\"ltr\" style=\"line-height:1.2;margin-top:0pt;margin-bottom:0pt;\">");
+        tab.append("<span style=\"font-size:10pt;font-family:Arial,sans-serif;font-weight:700;font-style:italic;text-decoration:none;\">");
+        tab.append(text == null ? "&nbsp;" : text).append("</span></p>");
     }
 
     public void writeLineOpener() {

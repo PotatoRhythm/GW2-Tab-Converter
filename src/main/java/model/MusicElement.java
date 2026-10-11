@@ -2,11 +2,15 @@ package model;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class MusicElement {
     private final ArrayList<Integer> noteList;
     private final double duration;
     private final int arpeggioType;
+    private List<List<Integer>> graceBefore = List.of();
+    private List<List<Integer>> graceAfter = List.of();
+    private boolean ornament = false;
 
     public MusicElement(ArrayList<Integer> noteList, double duration, int arpeggioType) {
         if (noteList != null) {
@@ -40,6 +44,27 @@ public class MusicElement {
 
     public int getArpeggioType() {
         return arpeggioType;
+    }
+
+    public List<List<Integer>> getGraceBefore() {
+        return graceBefore;
+    }
+
+    public List<List<Integer>> getGraceAfter() {
+        return graceAfter;
+    }
+
+    public void setGraceNotes(List<List<Integer>> before, List<List<Integer>> after) {
+        this.graceBefore = before;
+        this.graceAfter = after;
+    }
+
+    public boolean isOrnament() {
+        return ornament;
+    }
+
+    public void setOrnament(boolean ornament) {
+        this.ornament = ornament;
     }
 
     public boolean isRest() {

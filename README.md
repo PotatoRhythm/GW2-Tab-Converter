@@ -1,6 +1,6 @@
 # GW2 Tab Converter
 
-Converts MuseScore scores (`.mscz` or `.mscx`) into Guild Wars 2 instrument tabs.
+Converts MuseScore scores (`.mscz` or `.mscx`) and MIDI files (`.mid`) into Guild Wars 2 instrument tabs.
 
 ## Download
 
@@ -10,7 +10,10 @@ Windows may show "Windows protected your PC" the first time, because the install
 
 ## Features
 
-- Reads MuseScore 3 and 4 files, including ties, tuplets, pickup measures, time signature changes and 8va/8vb lines
+- Reads MuseScore 3, Musescore 4, and MIDI files
+- including ties, tuplets, pickup measures, tempo, time signatures, 8va/8vb, trills and tremolos, and grace notes
+- Automatically generate sections for MIDI tabs or place them manually
+- Recognises how MIDI files play rolled chords, trills, tremolos, grace notes and swing, and writes them like the score
 - Merges all voices on a staff, and can merge multi-staff instruments such as piano (grand staff) into one part
 - Notes that can't be placed exactly while merging can be added at the nearest timing or left out.
 - Copies the finished tab to the clipboard as a table that pastes straight into Google Docs
@@ -18,10 +21,10 @@ Windows may show "Windows protected your PC" the first time, because the install
 
 ## Using it
 
-1. Choose a MuseScore file, or drag one onto the window.
+1. Choose a MuseScore or MIDI file, or drag one onto the window.
 2. Pick the sharp key style and how many measures go on each row.
 3. Optionally change the look with the paintbrush button beside the **Options** dropdowns.
-4. Click **Convert & Copy**, then paste into a Google Doc.
+4. Click **Convert & Copy**, then paste into a Google Doc. For a MIDI file, first choose how to split it into boxes: **None** (one box), **Auto** (suggested from the music) or **Manual**. With Manual, click measures in the tab preview to start boxes, right-click a measure to listen from there, and switch off any tracks to leave out.
 
 ## Notation key
 
@@ -49,8 +52,10 @@ Based on notation by [Merrow](https://docs.google.com/document/d/1Bgoqi7LWJiqkF4
 | <code>⟦&nbsp;⟧</code>&nbsp;<code>⟦[&nbsp;]⟧</code>&nbsp;<code>⟦⟦&nbsp;⟧⟧</code> | Notes 2, 3 or 4 octaves lower, outside what GW2 instruments can reach |
 | `/` | Notes played together as a chord, e.g. `1/3/5` |
 | `{ }` | Grace notes, played very fast |
+| `tr{ }` | A trill or tremolo: `tr{7/8}~` alternates the two notes, `tr{8}~` repeats one quickly |
 | `` ` `` | Between numbers, just a visual spacer for readability, not a rest. `` 11`1111`11 `` is played the same as `11111111` |
 | <code>,<ins>136</ins>,</code> | A triplet: a group of three notes played in the time of two |
+| ***Swing*** | Eighth notes are played swung (long-short). ***Straight*** goes back to even eighths |
 
 ## Building from source
 

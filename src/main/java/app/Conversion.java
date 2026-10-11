@@ -24,18 +24,23 @@ import java.util.function.Consumer;
 
 // Converts score
 class Conversion {
+    // Reads the score. Called again with approximateTiming on if notes that don't fit exactly should be added
+    interface ScoreLoader {
+        Preprocessor load(boolean approximateTiming) throws Exception;
+    }
+
     private final File file;
+    private final ScoreLoader loader;
     private final int measuresPerRow;
-    private final boolean mergeStaves;
     private final String sharpStyle;
     private final StyleSettings style;
     private final Runnable whenDone;
 
     // whenDone runs once the conversion finishes, fails or is cancelled
-    Conversion(File file, int measuresPerRow, boolean mergeStaves, String sharpStyle, StyleSettings style, Runnable whenDone) {
+    Conversion(File file, ScoreLoader loader, int measuresPerRow, String sharpStyle, StyleSettings style, Runnable whenDone) {
         this.file = file;
+        this.loader = loader;
         this.measuresPerRow = measuresPerRow;
-        this.mergeStaves = mergeStaves;
         this.sharpStyle = sharpStyle;
         this.style = style;
         this.whenDone = whenDone;
@@ -43,7 +48,7 @@ class Conversion {
 
     // Reads the score, asks what to do with notes that don't fit exactly (if any), then copies the tab
     void start() {
-        runInBackground(() -> new Preprocessor(file, measuresPerRow, mergeStaves, false), preprocessor -> {
+        runInBackground(() -> loader.load(false), preprocessor -> {
             if (preprocessor.getDroppedNotes().isEmpty()) {
                 writeTab(preprocessor);
                 return;
@@ -52,7 +57,7 @@ class Conversion {
             if (approximate.isEmpty()) {
                 whenDone.run();
             } else if (approximate.get()) {
-                runInBackground(() -> new Preprocessor(file, measuresPerRow, mergeStaves, true),
+                runInBackground(() -> loader.load(true),
                         approximated -> writeTab(approximated));
             } else {
                 writeTab(preprocessor);
@@ -96,18 +101,28 @@ class Conversion {
         return alert;
     }
 
-    // Lucide "clipboard-check" (ISC licence) in place of the blue information icon,
-    // nudged right and down so it has a margin and sits level with the two lines of text
+    // Lucide "clipboard-check" (ISC licence) in place of the blue information icon
     private static Node clipboardIcon() {
-        SVGPath clipboard = new SVGPath();
-        clipboard.setContent("M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z "
+        return outlineIcon("M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z "
                 + "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M9 14l2 2 4-4");
-        clipboard.setStrokeLineCap(StrokeLineCap.ROUND);
-        clipboard.setStrokeLineJoin(StrokeLineJoin.ROUND);
-        clipboard.setScaleX(1.5);
-        clipboard.setScaleY(1.5);
-        clipboard.getStyleClass().add("clipboard-icon");
-        StackPane holder = new StackPane(new Group(clipboard));
+    }
+
+    // Lucide "triangle-alert" (ISC licence) in place of the blue question mark
+    private static Node warningIcon() {
+        return outlineIcon("M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z M12 9v4 M12 17h.01");
+    }
+
+    // A green outline icon drawn on a 24 x 24 grid, shown larger and nudged right and down so it has a margin
+    // and sits level with the text beside it
+    private static Node outlineIcon(String path) {
+        SVGPath icon = new SVGPath();
+        icon.setContent(path);
+        icon.setStrokeLineCap(StrokeLineCap.ROUND);
+        icon.setStrokeLineJoin(StrokeLineJoin.ROUND);
+        icon.setScaleX(1.5);
+        icon.setScaleY(1.5);
+        icon.getStyleClass().add("outline-icon");
+        StackPane holder = new StackPane(new Group(icon));
         holder.setPadding(new Insets(4, 2, 0, 6));
         return holder;
     }
@@ -136,12 +151,14 @@ class Conversion {
         ButtonType addButton = new ButtonType("Add Them", ButtonBar.ButtonData.YES);
         ButtonType dropButton = new ButtonType("Leave Them Out", ButtonBar.ButtonData.NO);
         Alert alert = Theme.apply(new Alert(Alert.AlertType.CONFIRMATION, "", addButton, dropButton, ButtonType.CANCEL));
+        alert.getDialogPane().setGraphic(warningIcon());
+        alert.getDialogPane().getStyleClass().add("fit-popup");
         alert.setTitle("Notes Don't Fit Exactly");
         alert.setHeaderText("Some notes can't be merged exactly.");
         String explanation = "Add them anyway?";
         if (preprocessor.hasUnalignedTupletNotes()) {
-            explanation += "\n- Measures with a tuplet: the tuplet's notes move to the nearest 32nd so every note fits. "
-                    + "The tuplet becomes regular (often dotted) notes and the measure keeps its length.";
+            explanation += "\n- The tuplet's notes move to the nearest 32nd so every note fits. "
+                    + "The tuplet becomes regular (often dotted) notes.";
         }
         if (preprocessor.hasExtraMeasures()) {
             explanation += "\n- Staff with extra measures: empty measures are added to the other staves so the extra ones fit. "

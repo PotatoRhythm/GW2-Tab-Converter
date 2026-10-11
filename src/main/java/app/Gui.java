@@ -1,5 +1,7 @@
 package app;
 
+import reader.midi.MidiReader;
+import reader.Preprocessor;
 import tab.StyleSettings;
 
 import javafx.geometry.*;
@@ -16,7 +18,9 @@ import javafx.stage.*;
 import javafx.util.StringConverter;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.prefs.Preferences;
 
 public class Gui {
@@ -234,9 +238,11 @@ public class Gui {
     // ===== Actions =====
     private void chooseFile() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open MuseScore File");
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("MuseScore files (*.mscz, *.mscx)", "*.mscz", "*.mscx"));
+        fileChooser.setTitle("Open Score");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("MuseScore and MIDI files", "*.mscz", "*.mscx", "*.mid", "*.midi"),
+                new FileChooser.ExtensionFilter("MuseScore files (*.mscz, *.mscx)", "*.mscz", "*.mscx"),
+                new FileChooser.ExtensionFilter("MIDI files (*.mid, *.midi)", "*.mid", "*.midi"));
         String lastDirectory = preferences.get("lastDirectory", null);
         if (lastDirectory != null) {
             File directory = new File(lastDirectory);
@@ -252,33 +258,80 @@ public class Gui {
         showFile();
     }
 
-    // The first .mscz or .mscx file being dragged, if any
+    // The first MuseScore or MIDI file being dragged, if any
     private static File draggedScore(DragEvent event) {
         if (!event.getDragboard().hasFiles()) return null;
         for (File file : event.getDragboard().getFiles()) {
             String name = file.getName().toLowerCase();
-            if (name.endsWith(".mscz") || name.endsWith(".mscx")) return file;
+            if (name.endsWith(".mscz") || name.endsWith(".mscx") || isMidi(file)) return file;
         }
         return null;
     }
 
+    private static boolean isMidi(File file) {
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".mid") || name.endsWith(".midi");
+    }
+
     private void convert(boolean mergeStaves) {
         if (uploadedFile == null || converting) return;
+        File file = uploadedFile;
+        int perRow = measuresPerRow;
+        Conversion.ScoreLoader loader;
+        if (isMidi(file)) {
+            // Ask how to split a MIDI file into boxes, since it has no double bar lines like scores do
+            MidiReader midi;
+            try {
+                midi = new MidiReader(file);
+            } catch (Exception e) {
+                Dialogs.showError("Could not read " + file.getName(), e);
+                return;
+            }
+            MidiSetup.BoxMode lastMode = MidiSetup.BoxMode.AUTO;
+            try {
+                lastMode = MidiSetup.BoxMode.valueOf(preferences.get("midiBoxMode", lastMode.name()));
+            } catch (IllegalArgumentException ignored) {
+                // An unknown saved choice keeps Auto
+            }
+            Optional<MidiSetup.BoxMode> boxMode = MidiSetup.askBoxMode(primaryStage, lastMode);
+            if (boxMode.isEmpty()) return;
+            preferences.put("midiBoxMode", boxMode.get().name());
+            List<Boolean> included;
+            List<Integer> boxStarts;
+            if (boxMode.get() == MidiSetup.BoxMode.MANUAL) {
+                Optional<MidiSetup.Choices> choices = MidiSetup.placeBoxes(primaryStage, file.getName(), midi, perRow,
+                        sharpStyle, mergeStaves);
+                if (choices.isEmpty()) return;
+                included = choices.get().included;
+                boxStarts = choices.get().boxStarts;
+            } else {
+                // Every track, with one box or the suggested ones
+                included = midi.getDefaultTracks();
+                boxStarts = boxMode.get() == MidiSetup.BoxMode.NONE ? List.of() : null;
+            }
+            loader = approximate -> {
+                Preprocessor preprocessor = new Preprocessor(midi.toScore(included, boxStarts),
+                        midi.getTitle(), perRow, mergeStaves, approximate);
+                preprocessor.getWarnings().addAll(midi.getWarnings());
+                return preprocessor;
+            };
+        } else {
+            loader = approximate -> new Preprocessor(file, perRow, mergeStaves, approximate);
+        }
         converting = true;
         showFile();
         Runnable whenDone = () -> {
             converting = false;
             showFile();
         };
-        new Conversion(uploadedFile, measuresPerRow, mergeStaves, sharpStyle,
-                StyleSettings.load(preferences), whenDone).start();
+        new Conversion(file, loader, perRow, sharpStyle, StyleSettings.load(preferences), whenDone).start();
     }
 
     // Updates the file and convert buttons
     private void showFile() {
         boolean hasFile = uploadedFile != null;
-        fileTitle.setText(hasFile ? uploadedFile.getName() : "Choose a MuseScore File");
-        fileHint.setText(hasFile ? "Click to choose a different file" : "or drop a .mscz or .mscx file here");
+        fileTitle.setText(hasFile ? uploadedFile.getName() : "Choose a MuseScore or MIDI File");
+        fileHint.setText(hasFile ? "Click to choose a different file" : "or drop a .mscz, .mscx or .mid file here");
         if (hasFile && !fileButton.getStyleClass().contains("has-file")) fileButton.getStyleClass().add("has-file");
         fileButton.setDisable(converting);
         convertButton.setText(converting ? "Converting…" : "Convert & Copy");

@@ -102,6 +102,9 @@ final class StyleSettingsWindow {
         addColorRow(grid, RIGHT, 2, instrumentColorToggle, instrumentColorPicker);
         addColorRow(grid, RIGHT, 3, boxLetterColorToggle, boxLetterColorPicker);
         addColorRow(grid, RIGHT, 4, sharpColorToggle, sharpColorPicker);
+        CheckBox markingsToggle = new CheckBox("Tempo and time signature");
+        markingsToggle.setTooltip(new Tooltip("Show them under the box letters, where they start or change"));
+        grid.add(markingsToggle, RIGHT, 5, 2, 1);
 
         // ===== Closing text =====
         CheckBox closingTextToggle = new CheckBox("Add text below the tab");
@@ -147,6 +150,7 @@ final class StyleSettingsWindow {
             boxLetterColorPicker.setValue(Color.web(style.boxLetterColor));
             sharpColorToggle.setSelected(style.sharpColorEnabled);
             sharpColorPicker.setValue(Color.web(style.sharpColor));
+            markingsToggle.setSelected(style.markingsEnabled);
         };
         showStyle.accept(StyleSettings.load(preferences));
         shareCustomColors(preferences, List.of(borderTopColor, borderSidesColor, borderBottomColor, boxColorPicker,
@@ -178,11 +182,11 @@ final class StyleSettingsWindow {
             style.sharpColor = toHex(sharpColorPicker.getValue());
             style.closingTextEnabled = closingTextToggle.isSelected();
             style.closingText = closingTextField.getText();
+            style.markingsEnabled = markingsToggle.isSelected();
             return style;
         };
 
         // ===== Buttons =====
-        // A loaded preset only fills the controls, like Reset, so it can still be cancelled
         MenuItem loadPreset = new MenuItem("Load Preset…");
         loadPreset.setOnAction(e -> {
             StyleSettings style = loadPreset(settingsStage, preferences);

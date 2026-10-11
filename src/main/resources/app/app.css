@@ -17,6 +17,10 @@
     -field-label: #b6bfba;
     -field: #343638;
     -field-hover: #3d4042;
+    /* Boxes popup cards under the mouse */
+    -card-hover: #3e4143;
+    /* Track cards under the mouse: a smaller step than the popup cards */
+    -track-hover: #393b3d;
     -field-border: #565b5e;
     -green: #2fa572;
     -green-hover: #36b47d;
@@ -61,6 +65,8 @@
     -field-label: #434f48;
     -field: #ffffff;
     -field-hover: #eef3f0;
+    -card-hover: #f0f4f1;
+    -track-hover: #f7f9f8;
     -field-border: #c9d3cd;
     -green: #279a65;
     -green-hover: #22875a;
@@ -438,8 +444,162 @@
 .copied-popup > .button-bar > .container {
     -fx-padding: 0.25em 0.833em 0.833em 0.833em;
 }
-.clipboard-icon {
+/* More space between the Notes Don't Fit popup's explanation and its buttons */
+.fit-popup > .content {
+    -fx-padding: 0.833em 0.833em 1.1em 0.833em;
+}
+.outline-icon {
     -fx-fill: transparent;
     -fx-stroke: -green;
     -fx-stroke-width: 2;
+}
+
+/* ===== Instrument picker for MIDI files ===== */
+.track-name {
+    -fx-font-weight: bold;
+}
+/* The Boxes popup: a card for each choice, with an icon, its name and what it does */
+/* Cards are as tall as their text, not the compact windows' fixed button height */
+.compact .button.mode-card {
+    -fx-min-height: -1;
+    -fx-pref-height: -1;
+    -fx-max-height: -1;
+}
+.button.mode-card {
+    -fx-background-color: -field;
+    -fx-border-color: -field-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 10 14 10 12;
+}
+/* Hovering makes the card a little lighter */
+.button.mode-card:hover {
+    -fx-background-color: -card-hover;
+}
+.button.mode-card:pressed {
+    -fx-background-color: -field-hover;
+}
+.mode-icon-holder {
+    -fx-background-color: -tonal;
+    -fx-background-radius: 8;
+}
+.mode-icon {
+    -fx-fill: transparent;
+    -fx-stroke: -tonal-text;
+    -fx-stroke-width: 1.8;
+}
+.mode-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.mode-description {
+    -fx-font-size: 12px;
+    -fx-text-fill: -field-label;
+}
+
+/* A track in the Place Boxes window: on to convert it, or faded when off to leave it out */
+.track-card {
+    -fx-background-color: -field;
+    -fx-border-color: -field-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 10 12 10 14;
+    -fx-cursor: hand;
+    -fx-opacity: 0.45;
+}
+.track-card:on {
+    -fx-opacity: 1;
+}
+.track-card:hover {
+    -fx-background-color: -track-hover;
+}
+
+/* A track's note count and range, quieter than its instrument above */
+.track-notes {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 11px;
+}
+.plain-scroll, .plain-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+/* The tab preview in the Boxes section. Each box is a band, taking turns between two shades, with its letter on the left */
+.box-preview {
+    -fx-background-color: -bg;
+    -fx-border-color: -field-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+}
+.box-band {
+    -fx-background-radius: 6;
+}
+.box-band.box-a {
+    -fx-background-color: -field;
+}
+.box-band.box-b {
+    -fx-background-color: -score-box;
+}
+.box-letter {
+    -fx-font-family: Georgia;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -tonal-text;
+    -fx-padding: 5 0 0 0;
+    -fx-min-width: 28;
+    -fx-alignment: center;
+}
+/* A measure: its number over its tab. Green outline on hover, and while it's playing */
+.measure-cell {
+    -fx-spacing: 2;
+    -fx-padding: 4 7 5 7;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: transparent;
+    -fx-border-width: 1.5;
+    -fx-cursor: hand;
+}
+.measure-cell:hover {
+    -fx-border-color: -input-green;
+}
+.measure-cell.playing {
+    -fx-background-color: -tonal-hover;
+    -fx-border-color: -green;
+}
+.measure-number {
+    -fx-font-size: 10px;
+    -fx-text-fill: -text-muted;
+}
+.measure-cell.box-start .measure-number {
+    -fx-text-fill: -tonal-text;
+    -fx-font-weight: bold;
+}
+/* Behind the chord being played */
+.chord-highlight {
+    -fx-fill: -green;
+    -fx-opacity: 0.45;
+}
+.tab-text {
+    -fx-font-family: Arial;
+    -fx-font-size: 13px;
+    -fx-fill: -text;
+}
+.tab-text.bold {
+    -fx-font-weight: bold;
+}
+.tab-text.underline {
+    -fx-underline: true;
+}
+.tab-text.italic {
+    -fx-font-style: italic;
+}
+.tab-text.sharp {
+    -fx-fill: -tonal-text;
+}
+.tab-text.empty {
+    -fx-fill: -text-muted;
 }

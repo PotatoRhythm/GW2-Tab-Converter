@@ -39,6 +39,28 @@ public class Parser {
 
     // Notes each column can't play, which are written as "?"
     private final Map<Instrument, List<Integer>> unplayablePitches = new LinkedHashMap<>();
+    // The text written for each line of each column, for previews
+    private final Map<Instrument, List<String>> lineTexts = new LinkedHashMap<>();
+    // Where each chord is written in each line, for previews
+    private final Map<Instrument, List<List<ChordSpan>>> lineChords = new LinkedHashMap<>();
+    // The chords of the line being written
+    private List<ChordSpan> chordSpans;
+
+    // Where a chord is written in a line's HTML (start to end index) and when it plays, in quarter notes from the
+    // start of the line
+    public static final class ChordSpan {
+        public final int start;
+        public final int end;
+        public final double position;
+        public final double endPosition;
+
+        ChordSpan(int start, int end, double position, double endPosition) {
+            this.start = start;
+            this.end = end;
+            this.position = position;
+            this.endPosition = endPosition;
+        }
+    }
 
     public Parser(ArrayList<Instrument> instrumentList, ArrayList<Box> boxes, StyleSettings style, String sharpStyle, int measuresPerRow, String title) {
         this.measuresPerRow = measuresPerRow;
@@ -63,18 +85,25 @@ public class Parser {
         int lineOffset = 0;
         for (int row = 0; row < boxes.size(); row++) {
             tabWriter.write("<tr>");
-            tabWriter.writeRowLabel(boxes.size(), row + 1, currentLetter);
+            tabWriter.writeRowLabel(boxes.size(), row + 1, currentLetter, boxes.get(row));
             // For each column
             double startingQuartersPerMeasure = quartersPerMeasure;
             int startingBeats = timeSigBeats;
             int startingNoteLength = timeSigNoteLength;
             for (int instrumentNum = 0; instrumentNum < instruments.size(); instrumentNum++) {
                 tabWriter.writeBoxOpener(boxes.size(), row + 1);
+                if (boxes.get(row).getLabel() != null) {
+                    // Only the first column shows the label; the others get an empty line so rows stay lined up
+                    tabWriter.writeBoxLabel(instrumentNum == 0 ? boxes.get(row).getLabel() : null);
+                }
                 prevOctave = 2;
                 // For each line
                 for (int line = 0; line < boxes.get(row).getNumLines(measuresPerRow); line++) {
                     tabWriter.writeLineOpener();
-                    tabWriter.write(parseLine(instruments.get(instrumentNum), lineOffset + line));
+                    String lineText = parseLine(instruments.get(instrumentNum), lineOffset + line);
+                    lineTexts.computeIfAbsent(instruments.get(instrumentNum), key -> new ArrayList<>()).add(lineText);
+                    lineChords.computeIfAbsent(instruments.get(instrumentNum), key -> new ArrayList<>()).add(chordSpans);
+                    tabWriter.write(lineText);
                     tabWriter.write("</span></p>");
                 }
                 // reset timeSig when starting next instrument
@@ -86,7 +115,7 @@ public class Parser {
                 tabWriter.write("</td>");
             }
             lineOffset += boxes.get(row).getNumLines(measuresPerRow);
-            tabWriter.writeRowLabel(boxes.size(), row + 1, currentLetter);
+            tabWriter.writeRowLabel(boxes.size(), row + 1, currentLetter, boxes.get(row));
             tabWriter.write("</tr>");
             currentLetter++;
         }
@@ -95,6 +124,7 @@ public class Parser {
 
     private String parseLine(Instrument instrument, int lineNum) {
         StringBuilder lineText = new StringBuilder();
+        chordSpans = new ArrayList<>();
         int currentOctave = 2;
         int nextOctave = 2;
         LineTiming timing = instrument.getLineTimings().get(lineNum);
@@ -124,6 +154,8 @@ public class Parser {
             if (musicElement instanceof TupletMusicElement && ((TupletMusicElement) musicElement).isFirst()) {
                 lineText.append(",<u>");
             }
+            int spanStart = lineText.length();
+            double spanPosition = position;
 
             double duration = musicElement.getDuration();
             if (!musicElement.isRest()) {
@@ -140,6 +172,20 @@ public class Parser {
                     }
                 }
 
+                ArrayList<Integer> noteList = musicElement.getNoteList();
+
+                // Grace notes before the element, like {23}1~
+                if (!musicElement.getGraceBefore().isEmpty()) {
+                    List<List<Integer>> graceNotes = musicElement.getGraceBefore();
+                    int firstGraceOctave = getOctave(graceNotes.get(0).get(0), instrument.getKeys());
+                    // The bracket before is still open only if it's in the same octave
+                    int octave = firstNote || prevOctave != firstGraceOctave ? 2 : prevOctave;
+                    octave = writeGraceNotes(lineText, instrument, graceNotes, octave);
+                    postOctaveHelper(lineText, octave, getOctave(noteList.get(0), instrument.getKeys()));
+                    prevOctave = octave;
+                    firstNote = false;
+                }
+
                 String beatCloser = "";
                 if (currentBeat == 1) {
                     lineText.append(tabWriter.writePrimaryBeatOpener());
@@ -149,20 +195,25 @@ public class Parser {
                     beatCloser = tabWriter.writeSecondaryBeatCloser();
                 }
 
-                ArrayList<Integer> noteList = musicElement.getNoteList();
-
                 // Arpeggios within one octave are written in braces
-                boolean bracketArpeggio = musicElement.getArpeggioType() != 0 && noteList.size() > 2
-                        && getOctave(noteList.get(0), instrument.getName()) == getOctave(noteList.get(noteList.size() - 1), instrument.getName());
+                boolean bracketArpeggio = musicElement.getArpeggioType() != 0 && noteList.size() > 2 && !musicElement.isOrnament()
+                        && getOctave(noteList.get(0), instrument.getKeys()) == getOctave(noteList.get(noteList.size() - 1), instrument.getKeys());
                 if (bracketArpeggio) {
                     lineText.append("{");
                 }
+                // Trills and tremolos are written tr{7/8}
+                if (musicElement.isOrnament()) {
+                    lineText.append("tr{");
+                }
+                boolean startedLine = firstNote;
+                int octaveBefore = prevOctave;
+                int firstNoteOctave = 2;
 
                 // For each note
                 for (int k = 0; k < noteList.size(); k++) {
                     int pitch = noteList.get(k);
-                    currentOctave = getOctave(pitch, instrument.getName());
-                    String convertedPitch = keys.getKey(pitch, instrument.getName());
+                    currentOctave = getOctave(pitch, instrument.getKeys());
+                    String convertedPitch = keys.getKey(pitch, instrument.getKeys());
                     if (convertedPitch.equals("?")) {
                         unplayablePitches.computeIfAbsent(instrument, key -> new ArrayList<>()).add(pitch);
                     }
@@ -178,13 +229,16 @@ public class Parser {
                     } else {
                         preOctaveHelper(lineText, prevOctave, currentOctave);
                     }
+                    if (k == 0) {
+                        firstNoteOctave = currentOctave;
+                    }
                     prevOctave = currentOctave;
 
                     lineText.append(convertedPitch);
 
                     // If not final note of chord, close this note's octave if the next one is in another
                     if (k < noteList.size() - 1) {
-                        nextOctave = getOctave(noteList.get(k + 1), instrument.getName());
+                        nextOctave = getOctave(noteList.get(k + 1), instrument.getKeys());
                         postOctaveHelper(lineText, currentOctave, nextOctave);
                         lineText.append("/");
                     }
@@ -192,6 +246,16 @@ public class Parser {
                 }
 
                 if (bracketArpeggio) {
+                    lineText.append("}");
+                }
+                if (musicElement.isOrnament()) {
+                    // A bracket opened inside tr{ } is closed before the }
+                    int octaveOutside = !startedLine && octaveBefore == firstNoteOctave ? octaveBefore : 2;
+                    if (currentOctave != octaveOutside) {
+                        postOctaveHelper(lineText, currentOctave, octaveOutside);
+                        currentOctave = 2;
+                        prevOctave = 2;
+                    }
                     lineText.append("}");
                 }
 
@@ -207,7 +271,16 @@ public class Parser {
             boolean addSpace = duration >= 0.5;
             lineText.append(rhythmWriter.write(duration, !musicElement.isRest(), timing, position, quartersPerMeasure, secondBeat, timeScale));
 
+            // Grace notes played at the end of the element, like 1~{23}
+            if (!musicElement.getGraceAfter().isEmpty()) {
+                currentOctave = writeGraceNotes(lineText, instrument, musicElement.getGraceAfter(), currentOctave);
+                prevOctave = currentOctave;
+            }
+
             position = advance(position, duration, timeScale);
+            if (!musicElement.isRest()) {
+                chordSpans.add(new ChordSpan(spanStart, lineText.length(), spanPosition, position));
+            }
             currentBeat = timing.getBeat(position);
 
             // Next element that isn't a time signature, or -1 if this is the last one in the line
@@ -225,9 +298,9 @@ public class Parser {
                 currentIndex++;
             }
 
-            // Set next octave based on first note of next chord
+            // Set next octave based on first note of next chord, or its first grace note
             if (nextChord != null) {
-                nextOctave = getOctave(nextChord.getNoteList().get(0), instrument.getName());
+                nextOctave = getFirstOctave(nextChord, instrument);
             } else {
                 nextOctave = 2;
             }
@@ -282,6 +355,69 @@ public class Parser {
         return rowString;
     }
 
+    // Writes grace chords in braces, like {23}, {3/5`6} or {(3)}. octave is the one in effect before them (2 when no
+    // bracket is open). An open bracket only carries on inside the braces if every grace note is in its octave,
+    // otherwise it's closed before the {. Brackets opened inside the braces are closed before the }.
+    // Returns the octave in effect after them
+    private int writeGraceNotes(StringBuilder lineText, Instrument instrument, List<List<Integer>> graceChords, int octave) {
+        String name = instrument.getKeys();
+        int openOctave = octave;
+        boolean allInOpenOctave = graceChords.stream().flatMap(List::stream)
+                .allMatch(pitch -> getOctave(pitch, name) == openOctave);
+        if (octave != 2 && !allInOpenOctave) {
+            // Closed before the space after the previous note, like other brackets
+            boolean space = lineText.length() > 0 && lineText.charAt(lineText.length() - 1) == ' ';
+            if (space) {
+                lineText.deleteCharAt(lineText.length() - 1);
+            }
+            postOctaveHelper(lineText, octave, 2);
+            if (space) {
+                lineText.append(' ');
+            }
+            octave = 2;
+        }
+        lineText.append("{");
+        int noteOctave = octave;
+        for (int c = 0; c < graceChords.size(); c++) {
+            List<Integer> chord = graceChords.get(c);
+            for (int k = 0; k < chord.size(); k++) {
+                int pitch = chord.get(k);
+                int prevNoteOctave = noteOctave;
+                noteOctave = getOctave(pitch, name);
+                preOctaveHelper(lineText, prevNoteOctave, noteOctave);
+                String key = keys.getKey(pitch, name);
+                if (key.equals("?")) {
+                    unplayablePitches.computeIfAbsent(instrument, i -> new ArrayList<>()).add(pitch);
+                }
+                lineText.append(key);
+
+                Integer nextPitch = k + 1 < chord.size() ? chord.get(k + 1)
+                        : c + 1 < graceChords.size() ? graceChords.get(c + 1).get(0) : null;
+                if (nextPitch != null) {
+                    postOctaveHelper(lineText, noteOctave, getOctave(nextPitch, name));
+                }
+                if (k + 1 < chord.size()) {
+                    lineText.append("/");
+                } else if (c + 1 < graceChords.size() && (chord.size() > 1 || graceChords.get(c + 1).size() > 1)) {
+                    lineText.append("`");
+                }
+            }
+        }
+        if (noteOctave != octave) {
+            postOctaveHelper(lineText, noteOctave, octave);
+            octave = 2;
+        }
+        lineText.append("}");
+        return octave;
+    }
+
+    // Octave of the first note written for an element: its first grace note if it has any
+    private int getFirstOctave(MusicElement musicElement, Instrument instrument) {
+        List<List<Integer>> graceNotes = musicElement.getGraceBefore();
+        int pitch = graceNotes.isEmpty() ? musicElement.getNoteList().get(0) : graceNotes.get(0).get(0);
+        return getOctave(pitch, instrument.getKeys());
+    }
+
     private int getNextNonTimeSigIndex(ArrayList<MusicElement> lineElements, int index) {
         for (int i = index + 1; i < lineElements.size(); i++) {
             if (!(lineElements.get(i) instanceof TimeSigMusicElement)) {
@@ -318,6 +454,16 @@ public class Parser {
 
     public String getTab() {
         return tabWriter.getTab();
+    }
+
+    // The HTML of each line written for a column, in order
+    public List<String> getLines(Instrument instrument) {
+        return lineTexts.getOrDefault(instrument, List.of());
+    }
+
+    // Where the chords are in each line written for a column, in order
+    public List<List<ChordSpan>> getLineChords(Instrument instrument) {
+        return lineChords.getOrDefault(instrument, List.of());
     }
 
     // Problems the user should know about, like notes that were written as "?"
@@ -393,6 +539,12 @@ public class Parser {
                 case '{':
                 case '}':
                     textWidth += 5.5;
+                    break;
+                case 't':
+                    textWidth += 3.9;
+                    break;
+                case 'r':
+                    textWidth += 4.6;
                     break;
                 default:
 

@@ -3,7 +3,7 @@ package tab;
 import java.util.Map;
 
 // Which key to press for each pitch, and which octave it's in, on each instrument
-class InstrumentKeys {
+public class InstrumentKeys {
     // Keys of an instrument with every note (C = 1), by pitch class (C = 0, C# = 1, ...); null for sharps
     private static final String[] CHROMATIC_KEYS = {"1", null, "2", null, "3", "4", null, "5", null, "6", null, "7"};
     // Which black key (0-4) each sharp is, by pitch class
@@ -55,6 +55,24 @@ class InstrumentKeys {
         return key != null ? key : "?";
     }
 
+    // Whether the instrument has a key for the pitch. Notes without one are written as "?"
+    public static boolean hasKey(int pitch, String instrument) {
+        int pitchClass = Math.floorMod(pitch, 12);
+        switch (instrument) {
+            case "Choir Bell":
+                return CHOIR_BELL_KEYS[pitchClass] != null;
+            case "Horn":
+            case "Flute":
+                return HORN_FLUTE_KEYS[pitchClass] != null;
+            case "Frame Drum":
+                return FRAME_DRUM_KEYS.containsKey(pitch);
+            case "Drum":
+                return (pitch >= 60 && pitch <= 71) || DRUM_HIGH_KEYS.containsKey(pitch);
+            default:
+                return true;
+        }
+    }
+
     // Key for a pitch class on an instrument with every note, with sharps in the chosen style and colour
     private String getChromaticKey(int pitchClass) {
         int blackKey = BLACK_KEYS[pitchClass];
@@ -104,7 +122,7 @@ class InstrumentKeys {
     }
 
     // Name of a pitch like "C4"
-    static String noteName(int pitch) {
+    public static String noteName(int pitch) {
         return NOTE_NAMES[Math.floorMod(pitch, 12)] + (Math.floorDiv(pitch, 12) - 1);
     }
 }

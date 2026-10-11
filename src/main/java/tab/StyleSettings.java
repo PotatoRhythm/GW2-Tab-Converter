@@ -32,6 +32,8 @@ public class StyleSettings {
     public String boxLetterColor = "#000000";
     public boolean closingTextEnabled = false;
     public String closingText = "";
+    // Tempo and time signature under the box letters
+    public boolean markingsEnabled = true;
 
     public static StyleSettings load(Preferences prefs) {
         return read(key -> prefs.get(key, null));
@@ -75,6 +77,7 @@ public class StyleSettings {
         map.put("boxLetterColor", boxLetterColor);
         map.put("closingTextEnabled", Boolean.toString(closingTextEnabled));
         map.put("closingText", closingText);
+        map.put("markingsEnabled", Boolean.toString(markingsEnabled));
         return map;
     }
 
@@ -102,6 +105,7 @@ public class StyleSettings {
         s.boxLetterColor = text(source, "boxLetterColor", s.boxLetterColor);
         s.closingTextEnabled = flag(source, "closingTextEnabled", s.closingTextEnabled);
         s.closingText = text(source, "closingText", s.closingText);
+        s.markingsEnabled = flag(source, "markingsEnabled", s.markingsEnabled);
         return s;
     }
 

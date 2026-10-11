@@ -16,8 +16,6 @@ import static reader.ScoreXml.*;
 class VoiceMerger {
     // Elements that take up time in a voice, everything else is kept as is
     private static final Set<String> RHYTHM_TAGS = Set.of("Chord", "Rest", "Tuplet", "endTuplet", "Beam", "location");
-    // Durations a single Chord/Rest can have, longest first
-    private static final String[] DURATION_TYPES = {"whole", "half", "quarter", "eighth", "16th", "32nd", "64th", "128th", "256th"};
     // Grids (in quarter notes) that tuplet notes are moved to when timing is approximated, coarsest first
     private static final double[] APPROXIMATION_GRIDS = {0.125, 0.0625};
 
@@ -275,6 +273,7 @@ class VoiceMerger {
             tupletEvents.put(key, new VoiceEvent(targetChord, target.onset, target.length, target.tupletIndex));
         }
         addNotes(targetChord, List.of(event.element));
+        Ornaments.copyOrnaments(targetChord, List.of(event.element));
         return true;
     }
 
@@ -346,31 +345,6 @@ class VoiceMerger {
         return key * EPSILON;
     }
 
-    // Splits a length into durations a single Chord/Rest can have, such as 1.25 -> quarter + 16th
-    private List<String[]> splitDuration(double quarters) {
-        List<String[]> durations = new ArrayList<>();
-        double remaining = quarters;
-        while (remaining > EPSILON) {
-            String[] best = null;
-            double bestLength = 0;
-            for (String type : DURATION_TYPES) {
-                for (int dots = 0; dots <= 2; dots++) {
-                    double length = durationToQuarters(type, dots);
-                    if (length <= remaining + EPSILON && length > bestLength) {
-                        best = new String[]{type, Integer.toString(dots)};
-                        bestLength = length;
-                    }
-                }
-            }
-            if (best == null) {
-                break; // shorter than a 256th note
-            }
-            durations.add(best);
-            remaining -= bestLength;
-        }
-        return durations;
-    }
-
     private List<Element> createRests(Element staff, double quarters) {
         List<Element> rests = new ArrayList<>();
         for (String[] duration : splitDuration(quarters)) {
@@ -389,6 +363,7 @@ class VoiceMerger {
             }
         }
         addNotes(chord, sourceChords);
+        Ornaments.copyOrnaments(chord, sourceChords);
         return chord;
     }
 

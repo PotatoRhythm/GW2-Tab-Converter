@@ -2,6 +2,7 @@ package reader;
 
 import model.Box;
 import model.Instrument;
+import reader.midi.MidiReader;
 import model.LineTiming;
 import model.MusicElement;
 import model.TimeSigMusicElement;
@@ -17,12 +18,14 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -42,24 +45,29 @@ public class Preprocessor {
     private final VoiceMerger voiceMerger;
 
     public Preprocessor(File musescoreFile, int measuresPerRow, boolean mergeStaves, boolean approximateTiming) throws Exception {
+        // No title in the score, so use the file name
+        this(readScore(musescoreFile), musescoreFile.getName().replaceFirst("\\.[^.]*$", "").replace('_', ' ').trim(),
+                measuresPerRow, mergeStaves, approximateTiming);
+    }
+
+    // Reads a score that's already loaded, like one built from a MIDI file. fallbackTitle is used if it has no title
+    public Preprocessor(Document doc, String fallbackTitle, int measuresPerRow, boolean mergeStaves, boolean approximateTiming) {
         this.measuresPerRow = measuresPerRow;
         this.mergeStaves = mergeStaves;
         this.approximateTiming = approximateTiming;
         this.voiceMerger = new VoiceMerger(approximateTiming, droppedNotes);
         this.instrumentList = new ArrayList<>();
         this.boxes = new ArrayList<>();
-        Document doc = readScore(musescoreFile);
         warnAboutUnsupportedDurations(doc);
         parseTitle(doc);
         if (title == null || title.isEmpty()) {
-            // No title in the score, so use the file name 
-            title = musescoreFile.getName().replaceFirst("\\.[^.]*$", "").replace('_', ' ').trim();
+            title = fallbackTitle;
         }
         processInstruments(doc);
     }
 
     // Reads a MuseScore file
-    private Document readScore(File musescoreFile) throws Exception {
+    private static Document readScore(File musescoreFile) throws Exception {
         DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
         if (!musescoreFile.getName().toLowerCase().endsWith(".mscz")) {
             return builder.parse(musescoreFile);
@@ -91,16 +99,19 @@ public class Preprocessor {
     }
 
     private void processInstruments(Document doc) {
-        // Store lists for parts and staves
-        NodeList parts = doc.getElementsByTagName("Part");
-        NodeList unfilteredStaves = doc.getElementsByTagName("Staff");
+        // Store lists for parts and staves. They're copied out of the live lists first: a live list searches the
+        // whole score again after every change, which takes seconds for scores with many staves
+        List<Element> parts = toList(doc.getElementsByTagName("Part"));
         List<Element> allStaves = new ArrayList<>();
-        for (int i = 0; i < unfilteredStaves.getLength(); i++) {
-            Element staff = (Element) unfilteredStaves.item(i);
+        for (Element staff : toList(doc.getElementsByTagName("Staff"))) {
             Node parent = staff.getParentNode();
             if (parent == null || !parent.getNodeName().equals("Part")) {
+                if (isGeneralDrums(findPart(parts, staff))) {
+                    mapDrums(staff);
+                }
                 Ties.preprocessTies(staff);
                 Ottavas.preprocessOttavas(staff, warnings);
+                Ornaments.preprocessOrnaments(staff, warnings);
                 allStaves.add(staff);
             }
         }
@@ -123,7 +134,6 @@ public class Preprocessor {
         }
         List<Element> outputStaves = new ArrayList<>(staffParts.keySet());
         for (Element staff : outputStaves) {
-            warnAboutGraceNotes(staff);
             voiceMerger.mergeVoices(staff);
         }
 
@@ -132,6 +142,8 @@ public class Preprocessor {
             padMeasures(staff, measureCount);
         }
         initBoxes(outputStaves.get(0));
+        labelSwingBoxes(allStaves);
+        markTempoAndTimeSignatures(allStaves);
 
         // Initialize Instruments
         for (Map.Entry<Element, Element> entry : staffParts.entrySet()) {
@@ -151,6 +163,8 @@ public class Preprocessor {
 
             List<Double> measureLengths = getMeasureLengths(stave);
             List<Double> timeSigLengths = getTimeSigLengths(stave);
+            // Found once per staff, not for every line, which is slow when there are many measures
+            List<Element> voices = getFirstVoices(stave);
             int startMeasure = 0;
             ArrayList<ArrayList<MusicElement>> lines = new ArrayList<>();
             ArrayList<LineTiming> lineTimings = new ArrayList<>();
@@ -158,13 +172,16 @@ public class Preprocessor {
                 int remainingMeasures = box.getNumMeasures();
                 for (int line = 0; line < box.getNumLines(measuresPerRow); line++) {
                     int lineMeasures = Math.min(remainingMeasures, measuresPerRow);
-                    lines.add(processLine(stave, startMeasure, lineMeasures, measureLengths));
+                    lines.add(processLine(voices, startMeasure, lineMeasures, measureLengths));
                     lineTimings.add(getLineTiming(measureLengths, timeSigLengths, startMeasure, lineMeasures));
                     startMeasure += lineMeasures;
                     remainingMeasures -= measuresPerRow;
                 }
             }
-            instrumentList.add(new Instrument(instrumentName, lines, lineTimings));
+            // Parts built from MIDI files are named after their MIDI instrument, but written with the keys above
+            String columnName = part.getAttribute(MidiReader.COLUMN_NAME);
+            String keys = isGeneralDrums(part) ? DrumKit.KEYS : instrumentName;
+            instrumentList.add(new Instrument(columnName.isEmpty() ? instrumentName : columnName, keys, lines, lineTimings));
         }
     }
 
@@ -197,35 +214,79 @@ public class Preprocessor {
         }
     }
 
-    // Grace notes take no time, so they can't be placed in the tab and are left out
-    private void warnAboutGraceNotes(Element staff) {
-        int graceNotes = 0;
-        NodeList chords = staff.getElementsByTagName("Chord");
-        for (int i = 0; i < chords.getLength(); i++) {
-            if (isGrace((Element) chords.item(i))) {
-                graceNotes += ((Element) chords.item(i)).getElementsByTagName("Note").getLength();
-            }
+    // A MuseScore drum part that isn't already written for GW2's Drum or Frame Drum, like the standard drumset.
+    // Its notes are General MIDI drum sounds
+    private static boolean isGeneralDrums(Element part) {
+        Element instrument = (Element) part.getElementsByTagName("Instrument").item(0);
+        if (instrument == null) {
+            return false;
         }
-        if (graceNotes > 0) {
-            warnings.add("Staff " + staff.getAttribute("id") + ": " + graceNotes + " grace note(s) were left out.");
+        String id = instrument.getAttribute("id");
+        NodeList useDrumset = instrument.getElementsByTagName("useDrumset");
+        return useDrumset.getLength() > 0 && useDrumset.item(0).getTextContent().trim().equals("1")
+                && !id.equals("gw2drum") && !id.equals("gw2framedrum");
+    }
+
+    // Moves each drum sound to its pad on the drum kit (see DrumKit). Two sounds on one pad in a chord are one hit,
+    // sounds with no pad are left out, and a chord left with no notes becomes a rest
+    private static void mapDrums(Element staff) {
+        for (Element chord : toList(staff.getElementsByTagName("Chord"))) {
+            Set<Integer> pads = new HashSet<>();
+            for (Element note : getChildElements(chord, "Note")) {
+                Element pitch = getChildElements(note, "pitch").stream().findFirst().orElse(null);
+                Integer pad = pitch == null ? null : DrumKit.padPitch(Integer.parseInt(pitch.getTextContent().trim()));
+                if (pad == null || !pads.add(pad)) {
+                    chord.removeChild(note);
+                } else {
+                    pitch.setTextContent(Integer.toString(pad));
+                }
+            }
+            if (pads.isEmpty()) {
+                if (isGrace(chord)) {
+                    chord.getParentNode().removeChild(chord);
+                    continue;
+                }
+                // A rest keeps the chord's length
+                for (Element child : getChildElementsList(chord)) {
+                    if (!child.getTagName().equals("durationType") && !child.getTagName().equals("dots")) {
+                        chord.removeChild(child);
+                    }
+                }
+                chord.getOwnerDocument().renameNode(chord, null, "Rest");
+            }
         }
     }
 
-    // Find which instrument the staff belongs to
-    private Element findPart(NodeList parts, Element staff) {
+    private static List<Element> toList(NodeList nodes) {
+        List<Element> elements = new ArrayList<>();
+        for (int i = 0; i < nodes.getLength(); i++) {
+            elements.add((Element) nodes.item(i));
+        }
+        return elements;
+    }
+
+    // Find which instrument the staff belongs to. MuseScore 4.6 and later leave out the staff ids in parts,
+    // so then the staves are counted in order: staff n is the n-th staff listed in the parts
+    private Element findPart(List<Element> parts, Element staff) {
         String staffId = staff.getAttribute("id");
-        for (int p = 0; p < parts.getLength(); p++) {
-            Element candidatePart = (Element) parts.item(p);
+        List<Element> partOfStaff = new ArrayList<>();
+        for (Element candidatePart : parts) {
             if (candidatePart.getElementsByTagName("Instrument").getLength() == 0) {
                 continue;
             }
-            NodeList partStaffs = candidatePart.getElementsByTagName("Staff");
-            for (int s = 0; s < partStaffs.getLength(); s++) {
-                Element partStaff = (Element) partStaffs.item(s);
+            for (Element partStaff : getChildElements(candidatePart, "Staff")) {
                 if (staffId.equals(partStaff.getAttribute("id"))) {
                     return candidatePart;
                 }
+                partOfStaff.add(candidatePart);
             }
+        }
+        try {
+            int index = Integer.parseInt(staffId) - 1;
+            if (index >= 0 && index < partOfStaff.size()) {
+                return partOfStaff.get(index);
+            }
+        } catch (NumberFormatException ignored) {
         }
         throw new IllegalArgumentException("Staff " + staffId + " does not belong to a part with an instrument.");
     }
@@ -271,9 +332,9 @@ public class Preprocessor {
     }
 
     // Turns measures into the line's MusicElements. Rests are added onto the note before them
-    private ArrayList<MusicElement> processLine(Element staff, int startMeasure, int numMeasures, List<Double> measureLengths) {
+    // voices are the staff's first voice in each measure
+    private ArrayList<MusicElement> processLine(List<Element> voices, int startMeasure, int numMeasures, List<Double> measureLengths) {
         ArrayList<MusicElement> line = new ArrayList<>();
-        List<Element> voices = getFirstVoices(staff);
 
         // Every element of the line's measures, and the length of the measure each one is in
         List<Element> voiceChildren = new ArrayList<>();
@@ -309,6 +370,17 @@ public class Preprocessor {
                     for (Element note : getChildElements(element, "Note")) {
                         notes.add(getPitch(note));
                     }
+                    // A trill or tremolo adds the other notes it plays, all written inside tr{ }
+                    boolean ornament = element.hasAttribute(Ornaments.ORNAMENT) && !notes.isEmpty();
+                    if (ornament) {
+                        for (List<Integer> chord : parseGraceChords(element.getAttribute(Ornaments.ORNAMENT))) {
+                            for (int pitch : chord) {
+                                if (!notes.contains(pitch)) {
+                                    notes.add(pitch);
+                                }
+                            }
+                        }
+                    }
 
                     // The chord's duration, plus any rests right after it
                     double duration = getElementQuarters(element, elementMeasureLengths.get(element));
@@ -327,6 +399,7 @@ public class Preprocessor {
                         arpeggioType = Integer.parseInt(arpeggioElement.getElementsByTagName("subtype").item(0).getTextContent());
                     }
 
+                    MusicElement musicElement;
                     if (insideTuplet) {
                         // Get tuplet info
                         double normalNotes = Double.parseDouble(tupletElement.getElementsByTagName("normalNotes").item(0).getTextContent());
@@ -337,10 +410,14 @@ public class Preprocessor {
                         if (j + k < voiceChildren.size() && voiceChildren.get(j + k).getTagName().equals("endTuplet")) {
                             isLast = true;
                         }
-                        line.add(new TupletMusicElement(notes, duration, arpeggioType, normalNotes, actualNotes, isFirst, isLast));
+                        musicElement = new TupletMusicElement(notes, duration, arpeggioType, normalNotes, actualNotes, isFirst, isLast);
                     } else {
-                        line.add(new MusicElement(notes, duration, arpeggioType));
+                        musicElement = new MusicElement(notes, duration, arpeggioType);
                     }
+                    musicElement.setGraceNotes(parseGraceChords(element.getAttribute(Ornaments.GRACE_BEFORE)),
+                            parseGraceChords(element.getAttribute(Ornaments.GRACE_AFTER)));
+                    musicElement.setOrnament(ornament);
+                    line.add(musicElement);
                     // Skip over handled following rests
                     j += k - 1;
                     break;
@@ -355,6 +432,23 @@ public class Preprocessor {
             }
         }
         return line;
+    }
+
+    // Chords stored as pitches joined by "," and chords joined by ";", like "74;76,79"
+    private List<List<Integer>> parseGraceChords(String text) {
+        List<List<Integer>> chords = new ArrayList<>();
+        for (String chordText : text.split(";")) {
+            List<Integer> chord = new ArrayList<>();
+            for (String pitch : chordText.split(",")) {
+                if (!pitch.isBlank()) {
+                    chord.add(Integer.parseInt(pitch.trim()));
+                }
+            }
+            if (!chord.isEmpty()) {
+                chords.add(chord);
+            }
+        }
+        return chords;
     }
 
     // Length of a Chord or Rest in quarter notes; a full-measure rest lasts the whole measure
@@ -390,6 +484,142 @@ public class Preprocessor {
         // Add final Box
         Box newBox = new Box(measureCounter);
         boxes.add(newBox);
+    }
+
+    // Swing is written as straight notes, so "Swing" goes at the top of the box where it starts
+    // (and "Straight" where it stops). MuseScore keeps it in <swing> tags of staff or system text
+    private void labelSwingBoxes(List<Element> staves) {
+        Map<Integer, Boolean> swingChanges = new TreeMap<>();
+        for (Element staff : staves) {
+            List<Element> measures = getMeasures(staff);
+            for (int m = 0; m < measures.size(); m++) {
+                NodeList swings = measures.get(m).getElementsByTagName("swing");
+                for (int i = 0; i < swings.getLength(); i++) {
+                    Element swing = (Element) swings.item(i);
+                    String unit = swing.getAttribute("unit");
+                    boolean on = (unit.equals("eighth") || unit.equals("16th")) && !swing.getAttribute("ratio").trim().equals("50");
+                    swingChanges.put(m, on);
+                }
+            }
+        }
+        boolean swinging = false;
+        int boxStart = 0;
+        for (Box box : boxes) {
+            for (int m = boxStart; m < boxStart + box.getNumMeasures(); m++) {
+                Boolean on = swingChanges.get(m);
+                if (on != null && on != swinging) {
+                    swinging = on;
+                    if (box.getLabel() == null) {
+                        box.setLabel(on ? "Swing" : "Straight");
+                    }
+                }
+            }
+            boxStart += box.getNumMeasures();
+        }
+    }
+
+    // Measures a new tempo must last to be marked, so short slowdowns and pauses aren't
+    private static final int MIN_TEMPO_MEASURES = 2;
+    // Beats per minute a tempo must change by to be marked
+    private static final int MIN_TEMPO_CHANGE = 5;
+
+    // Marks the starting tempo and time signature, and where they change, across from the line of the box they're on
+    private void markTempoAndTimeSignatures(List<Element> staves) {
+        int measureCount = boxes.stream().mapToInt(Box::getNumMeasures).sum();
+        List<String> tempos = new ArrayList<>();
+        List<String> timeSignatures = new ArrayList<>();
+        for (int m = 0; m < measureCount; m++) {
+            tempos.add(null);
+            timeSignatures.add(null);
+        }
+        for (Element staff : staves) {
+            List<Element> measures = getMeasures(staff);
+            for (int m = 0; m < Math.min(measureCount, measures.size()); m++) {
+                for (Element voice : getChildElements(measures.get(m), "voice")) {
+                    for (Element tempo : getChildElements(voice, "Tempo")) {
+                        if (tempos.get(m) == null) {
+                            tempos.set(m, tempoText(tempo));
+                        }
+                    }
+                    for (Element timeSig : getChildElements(voice, "TimeSig")) {
+                        if (timeSignatures.get(m) == null) {
+                            timeSignatures.set(m, timeSig.getElementsByTagName("sigN").item(0).getTextContent().trim()
+                                    + "/" + timeSig.getElementsByTagName("sigD").item(0).getTextContent().trim());
+                        }
+                    }
+                }
+            }
+        }
+        String shownTempo = null;
+        String shownTimeSignature = null;
+        int boxStart = 0;
+        for (Box box : boxes) {
+            for (int m = boxStart; m < boxStart + box.getNumMeasures(); m++) {
+                int line = (m - boxStart) / measuresPerRow;
+                String tempo = tempos.get(m);
+                // The first tempo is always marked; later ones only if they change enough and last.
+                // A line has room for one tempo and one time signature, so a line with several shows the first
+                if (tempo != null && tempoChanged(shownTempo, tempo) && (shownTempo == null || tempoLasts(tempos, m))) {
+                    if (box.getMarking(line).getTempo() == null) {
+                        box.getMarking(line).setTempo(tempo);
+                    }
+                    shownTempo = tempo;
+                }
+                String timeSignature = timeSignatures.get(m);
+                if (timeSignature != null && !timeSignature.equals(shownTimeSignature)) {
+                    if (box.getMarking(line).getTimeSignature() == null) {
+                        box.getMarking(line).setTimeSignature(timeSignature);
+                    }
+                    shownTimeSignature = timeSignature;
+                }
+            }
+            boxStart += box.getNumMeasures();
+        }
+    }
+
+    // Whether a tempo is different enough from the one before (null for none) to be marked: a different note,
+    // or a change of at least a few beats per minute
+    private static boolean tempoChanged(String before, String after) {
+        if (before == null) {
+            return true;
+        }
+        String beforeNote = before.replaceAll("[0-9]", "");
+        String afterNote = after.replaceAll("[0-9]", "");
+        if (!beforeNote.equals(afterNote)) {
+            return true;
+        }
+        int beforeBeats = Integer.parseInt(before.replaceAll("[^0-9]", ""));
+        int afterBeats = Integer.parseInt(after.replaceAll("[^0-9]", ""));
+        return Math.abs(afterBeats - beforeBeats) >= MIN_TEMPO_CHANGE;
+    }
+
+    // Whether the tempo starting at a measure lasts long enough to be marked, before a different one or the end
+    private static boolean tempoLasts(List<String> tempos, int start) {
+        if (start + MIN_TEMPO_MEASURES > tempos.size()) {
+            return false;
+        }
+        for (int m = start + 1; m < start + MIN_TEMPO_MEASURES; m++) {
+            if (tempos.get(m) != null && tempoChanged(tempos.get(start), tempos.get(m))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // A tempo marking like "♩120": quarter notes per minute, or dotted quarters or eighths if the marking uses them.
+    // MuseScore keeps the tempo in quarter notes per second, and the note in the marking's text
+    private static String tempoText(Element tempo) {
+        double quartersPerMinute = Double.parseDouble(tempo.getElementsByTagName("tempo").item(0).getTextContent().trim()) * 60;
+        Element textElement = (Element) tempo.getElementsByTagName("text").item(0);
+        // Symbols like the note are <sym> tags, whose names are part of the text
+        String text = textElement == null ? "" : textElement.getTextContent();
+        if (text.contains("metNote8thUp")) {
+            return "♪" + Math.round(quartersPerMinute * 2);
+        }
+        if (text.contains("metNoteQuarterUp") && text.contains("metAugmentationDot")) {
+            return "♩." + Math.round(quartersPerMinute * 2 / 3);
+        }
+        return "♩" + Math.round(quartersPerMinute);
     }
 
     public ArrayList<Instrument> getProcessedInstruments() {

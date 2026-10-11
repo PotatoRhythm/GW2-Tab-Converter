@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 // Small helpers for reading the parts of a MuseScore file the converter needs
-final class ScoreXml {
+public final class ScoreXml {
     private ScoreXml() {
     }
 
@@ -24,6 +24,9 @@ final class ScoreXml {
     private static final Map<String, Double> NOTE_VALUES = Map.of(
             "breve", 8.0, "whole", 4.0, "half", 2.0, "quarter", 1.0, "eighth", 0.5,
             "16th", 0.25, "32nd", 0.125, "64th", 0.0625, "128th", 0.03125, "256th", 0.015625);
+
+    // Durations a single Chord/Rest can have, longest first
+    private static final String[] DURATION_TYPES = {"whole", "half", "quarter", "eighth", "16th", "32nd", "64th", "128th", "256th"};
 
     static boolean isSupportedDuration(String duration) {
         return NOTE_VALUES.containsKey(duration);
@@ -42,6 +45,31 @@ final class ScoreXml {
             quarters += dotValueQuarters;
         }
         return quarters;
+    }
+
+    // Splits a length into durations a single Chord/Rest can have, such as 1.25 -> quarter + 16th
+    public static List<String[]> splitDuration(double quarters) {
+        List<String[]> durations = new ArrayList<>();
+        double remaining = quarters;
+        while (remaining > EPSILON) {
+            String[] best = null;
+            double bestLength = 0;
+            for (String type : DURATION_TYPES) {
+                for (int dots = 0; dots <= 2; dots++) {
+                    double length = durationToQuarters(type, dots);
+                    if (length <= remaining + EPSILON && length > bestLength) {
+                        best = new String[]{type, Integer.toString(dots)};
+                        bestLength = length;
+                    }
+                }
+            }
+            if (best == null) {
+                break; // shorter than a 256th note
+            }
+            durations.add(best);
+            remaining -= bestLength;
+        }
+        return durations;
     }
 
     static List<Element> getChildElements(Element parent, String tagName) {
@@ -120,7 +148,7 @@ final class ScoreXml {
     }
 
     // Creates an empty Chord or Rest with the given {durationType, dots}
-    static Element createDurationElement(Element staff, String tagName, String[] duration) {
+    public static Element createDurationElement(Element staff, String tagName, String[] duration) {
         Document doc = staff.getOwnerDocument();
         Element element = doc.createElement(tagName);
         Element durationType = doc.createElement("durationType");
@@ -206,9 +234,15 @@ final class ScoreXml {
                     // Grace notes take no time
                     if (!isGrace(child)) {
                         String durationType = child.getElementsByTagName("durationType").item(0).getTextContent();
-                        length = durationType.equals("measure")
-                                ? measureLength
-                                : durationToQuarters(durationType, getDots(child)) * tupletRatio;
+                        Element duration = getChildElements(child, "duration").stream().findFirst().orElse(null);
+                        if (durationType.equals("measure")) {
+                            length = measureLength;
+                        } else if (duration != null && child.getTagName().equals("Chord")) {
+                            // Each chord of a two-chord tremolo stores its real length
+                            length = fractionToQuarters(duration.getTextContent());
+                        } else {
+                            length = durationToQuarters(durationType, getDots(child)) * tupletRatio;
+                        }
                     }
                     break;
             }
