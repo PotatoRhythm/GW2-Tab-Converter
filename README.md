@@ -11,7 +11,7 @@ Windows may show "Windows protected your PC" the first time, because the install
 ## Features
 
 - Reads MuseScore 3, Musescore 4, and MIDI files
-- including ties, tuplets, pickup measures, tempo, time signatures, 8va/8vb, trills and tremolos, and grace notes
+- Includes ties, tuplets, pickup measures, tempo, time signatures, 8va/8vb, trills and tremolos, and grace notes
 - Automatically generate sections for MIDI tabs or place them manually
 - Recognises how MIDI files play rolled chords, trills, tremolos, grace notes and swing, and writes them like the score
 - Merges all voices on a staff, and can merge multi-staff instruments such as piano (grand staff) into one part
